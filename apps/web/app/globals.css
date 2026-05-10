@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   Tourney — brutalist dark
+   - Bordes duros 2-3px
+   - Esquinas rectas (radius 0-2px)
+   - Mono font default
+   - Contraste alto, accent Discord blurple
+   ============================================================ */
+
+@theme inline {
+  --color-background: #0a0a0a;
+  --color-foreground: #fafafa;
+
+  --color-card: #111111;
+  --color-card-foreground: #fafafa;
+
+  --color-muted: #1a1a1a;
+  --color-muted-foreground: #8a8a8a;
+
+  --color-border: #2a2a2a;
+  --color-border-strong: #ffffff;
+  --color-input: #1a1a1a;
+  --color-ring: #5865f2;
+
+  --color-primary: #5865f2;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #1a1a1a;
+  --color-secondary-foreground: #fafafa;
+
+  --color-accent: #eb459e;
+  --color-accent-foreground: #ffffff;
+
+  --color-success: #57f287;
+  --color-warning: #fee75c;
+  --color-danger: #ed4245;
+  --color-danger-foreground: #ffffff;
+
+  --radius: 2px;
+
+  --font-sans: var(--font-geist-mono), ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
+  --font-display: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html, body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+}
+
+@layer components {
+  .brutal-border {
+    border: 2px solid var(--color-border-strong);
+  }
+  .brutal-card {
+    background: var(--color-card);
+    border: 2px solid var(--color-border);
+  }
+}
