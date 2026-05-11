@@ -3,7 +3,7 @@ import { GeistMono } from 'geist/font/mono';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Tourney — Discord tournaments',
+  title: 'camiBOT — Discord tournaments',
   description: 'Hostea torneos directamente en tu servidor de Discord.',
 };
 

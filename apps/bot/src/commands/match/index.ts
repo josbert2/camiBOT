@@ -95,6 +95,8 @@ async function handleReport(interaction: ChatInputCommandInteraction) {
   const scoreP1 = meIsP1 ? myScore : oppScore;
   const scoreP2 = meIsP1 ? oppScore : myScore;
 
+  // Trackeamos si el nextMatch pasó a READY para crear su VC fuera de la tx
+  let nextMatchBecameReady = false;
   // Actualizar match en DB y avanzar
   await prisma.$transaction(async (tx) => {
     await tx.match.update({
@@ -130,7 +132,10 @@ async function handleReport(interaction: ChatInputCommandInteraction) {
         const willHaveBoth =
           (update.participant1Id ?? next.participant1Id) &&
           (update.participant2Id ?? next.participant2Id);
-        if (willHaveBoth) update.status = 'READY';
+        if (willHaveBoth) {
+          update.status = 'READY';
+          nextMatchBecameReady = true;
+        }
         if (Object.keys(update).length > 0) {
           await tx.match.update({ where: { id: next.id }, data: update });
         }
@@ -161,24 +166,51 @@ async function handleReport(interaction: ChatInputCommandInteraction) {
     }
   });
 
-  // Re-evaluar bracketData sintético (engine puro) — solo para mantener `bracketData` consistente
-  if (tournament.bracketData) {
+  // Crear VC del próximo match si ya tiene los dos jugadores
+  let vcLink = '';
+  if (
+    nextMatchBecameReady &&
+    myMatch.nextMatchId &&
+    tournament.voiceCategoryId &&
+    interaction.guild
+  ) {
     try {
-      const data = tournament.bracketData as unknown as BracketMatch[];
-      // El engine usa IDs sintéticos `m_r{round}_{n}`. No los tenemos en DB, así que esto
-      // queda solo como cache desactualizada por ahora — se regenera desde DB cuando se renderiza.
-      // TODO Fase 2: replicar en bracketData usando IDs reales.
-      void applyMatchResult; // referencia para evitar tree-shaking del import si no se usa
-      void data;
+      const { createMatchVoiceChannel, canManageChannels, canMoveMembers, tryMoveToVoice } =
+        await import('../../lib/voice.js');
+      const { getBracketContext } = await import('./vc-helpers.js');
+
+      if (canManageChannels(interaction.guild)) {
+        const ctx = await getBracketContext(myMatch.nextMatchId);
+        if (ctx) {
+          const vc = await createMatchVoiceChannel(interaction.guild, tournament.voiceCategoryId, {
+            matchId: myMatch.nextMatchId,
+            matchNumber: ctx.matchNumber,
+            round: ctx.round,
+            totalRounds: ctx.totalRounds,
+            p1Name: ctx.p1Name,
+            p2Name: ctx.p2Name,
+          });
+          await prisma.match.update({
+            where: { id: myMatch.nextMatchId },
+            data: { voiceChannelId: vc.id },
+          });
+
+          // Mover al ganador al VC del próximo match (si está en voice)
+          if (canMoveMembers(interaction.guild)) {
+            await tryMoveToVoice(interaction.guild, interaction.user.id, vc.id);
+          }
+          vcLink = `\nPróx. match VC: <#${vc.id}>`;
+        }
+      }
     } catch (err) {
-      logger.warn({ err }, 'No pude actualizar bracketData');
+      logger.warn({ err }, 'No pude crear VC del próximo match');
     }
   }
 
   await interaction.editReply({
     content: `✓ Resultado registrado: ${myScore}-${oppScore}. ${
       myMatch.nextMatchId ? 'Avanzaste de ronda.' : '¡Ganaste el torneo!'
-    }`,
+    }${vcLink}`,
   });
 
   logger.info(

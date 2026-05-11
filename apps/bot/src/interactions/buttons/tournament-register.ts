@@ -113,7 +113,7 @@ async function refreshRegistrationMessage(interaction: ButtonInteraction, tourna
 
   const updated = await prisma.tournament.findUnique({
     where: { id: tournamentId },
-    include: { participants: true },
+    include: { participants: { include: { user: true }, orderBy: { registeredAt: 'asc' } } },
   });
   if (!updated) return;
 

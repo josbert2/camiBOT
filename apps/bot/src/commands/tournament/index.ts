@@ -53,6 +53,15 @@ const command: SlashCommand = {
         )
         .addStringOption((o) =>
           o.setName('description').setDescription('Descripción opcional').setMaxLength(500),
+        )
+        .addStringOption((o) =>
+          o
+            .setName('seeding')
+            .setDescription('Cómo emparejar (default: aleatorio)')
+            .addChoices(
+              { name: 'Aleatorio (recomendado)', value: 'RANDOM' },
+              { name: 'Por orden de registro', value: 'REGISTRATION' },
+            ),
         ),
     )
     .addSubcommand((sub) =>
@@ -73,6 +82,14 @@ const command: SlashCommand = {
         .addStringOption((o) =>
           o.setName('name').setDescription('Slug del torneo').setRequired(true).setAutocomplete(true),
         ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('view')
+        .setDescription('Ver detalle de un torneo (con participantes)')
+        .addStringOption((o) =>
+          o.setName('name').setDescription('Slug del torneo').setRequired(true).setAutocomplete(true),
+        ),
     ),
 
   async execute(interaction) {
@@ -84,6 +101,7 @@ const command: SlashCommand = {
       return handleStart(interaction);
     }
     if (sub === 'cancel') return handleCancel(interaction);
+    if (sub === 'view') return handleView(interaction);
   },
 };
 
@@ -98,6 +116,9 @@ async function handleCreate(interaction: ChatInputCommandInteraction) {
   const maxParticipants = interaction.options.getInteger('max-participants') ?? 32;
   const bestOf = interaction.options.getInteger('best-of') ?? 1;
   const description = interaction.options.getString('description');
+  const seeding = (interaction.options.getString('seeding') ?? 'RANDOM') as
+    | 'RANDOM'
+    | 'REGISTRATION';
 
   if (format !== 'SINGLE_ELIMINATION') {
     await interaction.reply({
@@ -125,6 +146,7 @@ async function handleCreate(interaction: ChatInputCommandInteraction) {
         status: 'REGISTRATION',
         maxParticipants,
         bestOf,
+        seedingMode: seeding,
         channelId: interaction.channelId,
       },
     });
@@ -188,11 +210,46 @@ async function handleCancel(interaction: ChatInputCommandInteraction) {
     await interaction.editReply({ content: 'Torneo no encontrado.' });
     return;
   }
+
   await prisma.tournament.update({
     where: { id: tournament.id },
     data: { status: 'CANCELLED' },
   });
-  await interaction.editReply({ content: `Torneo \`${tournament.slug}\` cancelado.` });
+
+  // Limpiar categoría + VCs si existen
+  let vcMsg = '';
+  if (tournament.voiceCategoryId) {
+    const { deleteTournamentCategory } = await import('../../lib/voice.js');
+    await deleteTournamentCategory(interaction.guild, tournament.voiceCategoryId);
+    await prisma.tournament.update({
+      where: { id: tournament.id },
+      data: { voiceCategoryId: null },
+    });
+    vcMsg = ' (canales de voz borrados)';
+  }
+
+  await interaction.editReply({ content: `Torneo \`${tournament.slug}\` cancelado.${vcMsg}` });
+}
+
+async function handleView(interaction: ChatInputCommandInteraction) {
+  if (!interaction.guild) return;
+  const slug = interaction.options.getString('name', true);
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const guild = await upsertGuild(interaction.guild);
+  const tournament = await prisma.tournament.findUnique({
+    where: { guildId_slug: { guildId: guild.id, slug } },
+    include: {
+      participants: { include: { user: true }, orderBy: { registeredAt: 'asc' } },
+    },
+  });
+  if (!tournament) {
+    await interaction.editReply({ content: 'Torneo no encontrado.' });
+    return;
+  }
+  await interaction.editReply({
+    embeds: [tournamentRegistrationEmbed(tournament, tournament.participants)],
+  });
 }
 
 export default command;

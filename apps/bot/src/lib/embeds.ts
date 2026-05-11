@@ -1,5 +1,5 @@
 import { EmbedBuilder, type APIEmbed } from 'discord.js';
-import type { Tournament, Participant } from '@camibot/db';
+import type { Tournament, Participant, User } from '@camibot/db';
 
 const COLOR_PRIMARY = 0x5865f2; // Discord blurple
 const COLOR_SUCCESS = 0x57f287;
@@ -31,11 +31,13 @@ const STATUS_COLOR: Record<string, number> = {
   CANCELLED: COLOR_DANGER,
 };
 
+type ParticipantWithUser = Participant & { user: User };
+
 export function tournamentRegistrationEmbed(
   tournament: Tournament,
-  participants: Participant[],
+  participants: ParticipantWithUser[] | Participant[],
 ): EmbedBuilder {
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle(`🏆  ${tournament.name}`)
     .setDescription(tournament.description ?? '_Sin descripción._')
     .setColor(STATUS_COLOR[tournament.status] ?? COLOR_PRIMARY)
@@ -52,9 +54,29 @@ export function tournamentRegistrationEmbed(
         value: `BO${tournament.bestOf}`,
         inline: true,
       },
-    )
-    .setFooter({ text: `ID: ${tournament.id}` })
-    .setTimestamp(tournament.updatedAt);
+    );
+
+  // Lista de participantes (si vienen con user, mostramos nombres)
+  if (participants.length > 0 && 'user' in participants[0]!) {
+    const list = participants as ParticipantWithUser[];
+    const lines = list.map((p, i) => {
+      const name = p.user.globalName ?? p.user.username;
+      const mention = p.user.discordId.startsWith('dev_')
+        ? `\`${name}\``
+        : `<@${p.user.discordId}>`;
+      const tag = p.status === 'CHECKED_IN' ? ' ✓' : '';
+      return `\`${String(i + 1).padStart(2, '0')}\` ${mention}${tag}`;
+    });
+    // Discord embed field: max 1024 chars. Si pasa, truncamos.
+    const value = lines.join('\n');
+    embed.addFields({
+      name: `Participantes (${list.length})`,
+      value: value.length > 1024 ? value.slice(0, 1000) + '\n... y más' : value,
+    });
+  }
+
+  embed.setFooter({ text: `slug: ${tournament.slug}` }).setTimestamp(tournament.updatedAt);
+  return embed;
 }
 
 export function bracketEmbed(tournamentName: string, bracketText: string): APIEmbed {

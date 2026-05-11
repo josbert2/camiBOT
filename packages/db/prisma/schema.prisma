@@ -124,6 +124,12 @@ enum TournamentVisibility {
   UNLISTED     // accesible por link, no listado
 }
 
+enum SeedingMode {
+  RANDOM        // shuffle al iniciar
+  REGISTRATION  // orden de registro
+  MANUAL        // admin define seeds (Fase 3+)
+}
+
 model Tournament {
   id            String   @id @default(cuid())
   guildId       String
@@ -140,6 +146,7 @@ model Tournament {
   maxParticipants Int      @default(32)
   bestOf        Int        @default(1)   // BO1, BO3, BO5
   teamSize      Int        @default(1)   // 1 = solo, 2+ = equipo
+  seedingMode   SeedingMode @default(RANDOM)
   // Timing
   registrationOpensAt  DateTime?
   registrationClosesAt DateTime?
@@ -149,6 +156,7 @@ model Tournament {
   channelId     String?    // canal donde se anuncia
   threadId      String?    // thread del torneo
   registrationMessageId String? // mensaje con botones de registro
+  voiceCategoryId String?  // categoría con los VCs de los matches
   // Bracket data (JSON serializado del bracket completo)
   bracketData   Json?
   createdAt     DateTime   @default(now())
@@ -244,7 +252,8 @@ model Match {
   nextMatchId       String?  // match destino del ganador
   loserNextMatchId  String?  // match destino del perdedor (double elim)
   // Discord
-  threadId     String?
+  threadId        String?
+  voiceChannelId  String?  // VC del match (creado al estar READY)
   // Timestamps
   scheduledAt  DateTime?
   startedAt    DateTime?

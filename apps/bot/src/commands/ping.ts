@@ -6,15 +6,9 @@ const ping: SlashCommand = {
     .setName('ping')
     .setDescription('Verifica que el bot responde'),
   async execute(interaction) {
-    const sent = await interaction.reply({
-      content: 'Pinging...',
-      withResponse: true,
+    await interaction.reply({
+      content: `Pong. WS: ${interaction.client.ws.ping}ms`,
     });
-    const latency =
-      (sent.resource?.message?.createdTimestamp ?? Date.now()) - interaction.createdTimestamp;
-    await interaction.editReply(
-      `Pong. Latencia: ${latency}ms · WS: ${interaction.client.ws.ping}ms`,
-    );
   },
 };
 

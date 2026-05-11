@@ -1,15 +1,13 @@
-import { Client, GatewayIntentBits, Partials } from 'discord.js';
+import { Client, GatewayIntentBits } from 'discord.js';
 import { env } from './lib/env.js';
 import { logger } from './lib/logger.js';
 import { registerEvents } from './events/index.js';
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-  ],
-  partials: [Partials.Channel, Partials.Message],
+  // Solo Guilds — slash commands y botones no necesitan más.
+  // GuildMembers y MessageContent son privileged intents que requieren activarse
+  // en el dev portal. Por ahora no nos hacen falta.
+  intents: [GatewayIntentBits.Guilds],
 });
 
 registerEvents(client);
