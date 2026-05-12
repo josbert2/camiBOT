@@ -107,6 +107,13 @@ enum TournamentFormat {
   DOUBLE_ELIMINATION
   ROUND_ROBIN
   SWISS
+  FFA
+  GROUP_STAGE
+}
+
+enum FfaDirection {
+  HIGHER_BETTER  // más puntaje = mejor (típico arcade/kills)
+  LOWER_BETTER   // menos puntaje = mejor (typical carrera/tiempo)
 }
 
 enum TournamentStatus {
@@ -147,6 +154,10 @@ model Tournament {
   bestOf        Int        @default(1)   // BO1, BO3, BO5
   teamSize      Int        @default(1)   // 1 = solo, 2+ = equipo
   seedingMode   SeedingMode @default(RANDOM)
+  // FFA / Group stage config
+  ffaDirection  FfaDirection? // HIGHER_BETTER (default) o LOWER_BETTER en FFA
+  groupCount    Int? // cantidad de grupos en GROUP_STAGE
+  advancePerGroup Int? // top N de cada grupo que pasa a playoffs
   // Timing
   registrationOpensAt  DateTime?
   registrationClosesAt DateTime?
@@ -200,6 +211,11 @@ model Participant {
   // Stats
   wins         Int      @default(0)
   losses       Int      @default(0)
+  // Para FFA: puntaje libre numérico que el participante reporta
+  ffaScore     Decimal? @db.Decimal(12, 3)
+  ffaNote      String?  // ej. "1:23:45 lap time"
+  // Para GROUP_STAGE: a qué grupo pertenece (1, 2, 3, ...)
+  groupNumber  Int?
   registeredAt DateTime @default(now())
   checkedInAt  DateTime?
 

@@ -4,6 +4,7 @@ import { prisma } from '@camibot/db';
 import { BracketSVG } from '@/components/bracket-svg';
 import { StandingsTable } from '@/components/standings-table';
 import { SwissStandingsTable } from '@/components/swiss-standings-table';
+import { FfaStandingsTable } from '@/components/ffa-standings-table';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -24,6 +25,8 @@ const FORMAT_LABELS: Record<string, string> = {
   DOUBLE_ELIMINATION: 'Doble eliminación',
   ROUND_ROBIN: 'Round robin',
   SWISS: 'Sistema suizo',
+  FFA: 'FFA / Carrera',
+  GROUP_STAGE: 'Fase de grupos',
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -138,6 +141,27 @@ export default async function TournamentPage({ params }: PageProps) {
           name: p.user.globalName ?? p.user.username,
           seed: p.seed,
         }));
+
+        if (tournament.format === 'FFA') {
+          const ffaParticipants = tournament.participants.map((p) => ({
+            id: p.id,
+            name: p.user.globalName ?? p.user.username,
+            seed: p.seed,
+            ffaScore: p.ffaScore !== null ? Number(p.ffaScore) : null,
+            ffaNote: p.ffaNote,
+            status: p.status,
+          }));
+          return (
+            <section className="mb-12">
+              <div className="mb-3 tag-tactical">[score libre · FFA]</div>
+              <FfaStandingsTable
+                participants={ffaParticipants}
+                direction={tournament.ffaDirection ?? null}
+                champion={winner?.id ?? null}
+              />
+            </section>
+          );
+        }
 
         if (tournament.format === 'SWISS') {
           const lastRound = Math.max(...tournament.matches.map((m) => m.round), 0);

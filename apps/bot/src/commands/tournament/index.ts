@@ -15,6 +15,9 @@ const formatChoices = [
   { name: 'Eliminación simple', value: 'SINGLE_ELIMINATION' as const },
   { name: 'Doble eliminación', value: 'DOUBLE_ELIMINATION' as const },
   { name: 'Round robin (todos contra todos)', value: 'ROUND_ROBIN' as const },
+  { name: 'Sistema suizo', value: 'SWISS' as const },
+  { name: 'FFA / Carrera (score libre)', value: 'FFA' as const },
+  { name: 'Fase de grupos + playoffs', value: 'GROUP_STAGE' as const },
 ];
 
 const command: SlashCommand = {
@@ -69,6 +72,29 @@ const command: SlashCommand = {
             .setDescription('Tamaño de equipo (1=solo, 2=2v2, 3=3v3, etc)')
             .setMinValue(1)
             .setMaxValue(5),
+        )
+        .addStringOption((o) =>
+          o
+            .setName('ffa-direction')
+            .setDescription('FFA: ¿gana más score o menos? (default: más)')
+            .addChoices(
+              { name: 'Más es mejor (kills, score)', value: 'HIGHER_BETTER' },
+              { name: 'Menos es mejor (tiempo, vueltas)', value: 'LOWER_BETTER' },
+            ),
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName('groups')
+            .setDescription('GROUP_STAGE: cantidad de grupos (default 2)')
+            .setMinValue(2)
+            .setMaxValue(16),
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName('advance-per-group')
+            .setDescription('GROUP_STAGE: top N de cada grupo que pasa a playoffs (default 2)')
+            .setMinValue(1)
+            .setMaxValue(8),
         ),
     )
     .addSubcommand((sub) =>
@@ -154,14 +180,12 @@ async function handleCreate(interaction: ChatInputCommandInteraction) {
     | 'RANDOM'
     | 'REGISTRATION';
   const teamSize = interaction.options.getInteger('team-size') ?? 1;
-
-  if (format === 'SWISS') {
-    await interaction.reply({
-      content: 'El formato Suizo todavía no está implementado. Probá single elim, doble elim o round robin.',
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
+  const ffaDirection = interaction.options.getString('ffa-direction') as
+    | 'HIGHER_BETTER'
+    | 'LOWER_BETTER'
+    | null;
+  const groupCount = interaction.options.getInteger('groups');
+  const advancePerGroup = interaction.options.getInteger('advance-per-group');
 
   await interaction.deferReply();
 
@@ -183,6 +207,9 @@ async function handleCreate(interaction: ChatInputCommandInteraction) {
         bestOf,
         teamSize,
         seedingMode: seeding,
+        ffaDirection: format === 'FFA' ? (ffaDirection ?? 'HIGHER_BETTER') : null,
+        groupCount: format === 'GROUP_STAGE' ? (groupCount ?? 2) : null,
+        advancePerGroup: format === 'GROUP_STAGE' ? (advancePerGroup ?? 2) : null,
         channelId: interaction.channelId,
       },
     });

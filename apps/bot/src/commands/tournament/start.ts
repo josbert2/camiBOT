@@ -92,7 +92,9 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
 
   // Selección del engine según formato
   const bracketMatches = generateBracket(tournament.format, seeds);
-  const totalRounds = Math.max(...bracketMatches.map((m) => m.round));
+  const totalRounds = bracketMatches.length
+    ? Math.max(...bracketMatches.map((m) => m.round))
+    : 1;
 
   // Persistir matches en transacción
   const idMap = new Map<string, string>();
@@ -271,6 +273,12 @@ function generateBracket(format: TournamentFormat, seeds: BracketSeed[]): Bracke
       return generateRoundRobin({ seeds });
     case 'SWISS':
       return generateSwissRoundOne(seeds);
+    case 'FFA':
+      // FFA no genera matches — cada participante reporta su score con /score submit
+      return [];
+    case 'GROUP_STAGE':
+      // Stub: a implementar en commit aparte. Por ahora generamos RR como fallback.
+      return generateRoundRobin({ seeds });
     default: {
       const _exhaustive: never = format;
       throw new Error(`Formato desconocido: ${_exhaustive as string}`);
@@ -288,6 +296,10 @@ function formatToLabel(format: TournamentFormat): string {
       return 'round robin';
     case 'SWISS':
       return 'sistema suizo';
+    case 'FFA':
+      return 'FFA / score libre';
+    case 'GROUP_STAGE':
+      return 'fase de grupos';
   }
 }
 
