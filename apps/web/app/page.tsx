@@ -1,4 +1,15 @@
 import Link from 'next/link';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  DiscordIcon,
+  DashboardSquare01Icon,
+  TargetIcon,
+  Database01Icon,
+  GlobeIcon,
+  WorkflowSquare06Icon,
+  CpuIcon,
+  ServerStack03Icon,
+} from '@hugeicons/core-free-icons';
 import {
   getBotStatus,
   getDbStatus,
@@ -8,7 +19,7 @@ import {
   type StatusValue,
 } from '../lib/status';
 
-export const revalidate = 30; // refrescar cada 30s
+export const revalidate = 30;
 
 const INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${
   process.env.DISCORD_CLIENT_ID ?? ''
@@ -39,38 +50,38 @@ export default async function HomePage() {
   ]);
   const web = getWebStatus();
 
-  const cells: { k: string; v: StatusValue | string }[] = [
-    { k: 'BOT', v: bot },
-    { k: 'DB', v: db },
-    { k: 'WEB', v: web },
-    { k: 'PHASE', v: phase },
+  const cells: { k: string; v: StatusValue | string; icon: typeof CpuIcon }[] = [
+    { k: 'BOT', v: bot, icon: CpuIcon },
+    { k: 'DB', v: db, icon: Database01Icon },
+    { k: 'WEB', v: web, icon: GlobeIcon },
+    { k: 'OPS', v: phase, icon: WorkflowSquare06Icon },
   ];
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col px-6 py-16">
+    <main className="relative mx-auto flex min-h-[calc(100vh-60px)] max-w-5xl flex-col px-6 py-12">
       {/* Header marker */}
-      <div className="mb-16 flex items-center justify-between border-b-2 border-border-strong pb-4">
-        <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          [camibot/v0.0.0]
-        </span>
-        <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          phase_1.5:voice+brackets
-        </span>
+      <div className="mb-12 flex items-center justify-between border-b border-border pb-3">
+        <div className="flex items-center gap-2 tag-tactical">
+          <HugeiconsIcon icon={TargetIcon} className="h-3.5 w-3.5 text-primary" />
+          <span>OPSEC // CAMIBOT_v0.0.0</span>
+        </div>
+        <span className="tag-tactical text-primary">{phase}</span>
       </div>
 
       {/* Hero */}
       <section className="flex flex-1 flex-col justify-center">
-        <h1 className="mb-8 text-5xl font-bold uppercase leading-[0.95] tracking-tight md:text-7xl">
-          Host
+        <h1 className="stencil mb-6 text-6xl leading-[0.9] md:text-8xl">
+          DEPLOY
           <br />
-          tournaments
+          TOURNAMENTS
           <br />
-          <span className="bg-primary px-2 text-primary-foreground">in discord.</span>
+          <span className="text-primary">// IN DISCORD</span>
         </h1>
 
-        <p className="mb-12 max-w-xl text-base text-muted-foreground md:text-lg">
-          Single elim, double elim, round robin. Brackets, registration, check-in,
-          leaderboards. Todo nativo del server.
+        <p className="mb-10 max-w-2xl text-sm text-muted-foreground md:text-base">
+          Single elim · Double elim · Round robin · Teams 2v2/3v3. Brackets, check-in
+          con timer, voice channels por match, leaderboards persistentes. Operación
+          completa nativa del servidor.
         </p>
 
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -78,47 +89,58 @@ export default async function HomePage() {
             href={INVITE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="border-2 border-border-strong bg-foreground px-6 py-3 text-center text-sm font-bold uppercase tracking-wider text-background transition hover:bg-primary hover:text-primary-foreground"
+            className="btn-tactical"
           >
-            Invitar bot
+            <HugeiconsIcon icon={DiscordIcon} className="h-5 w-5" />
+            <span>Reclutar bot</span>
           </a>
-          <Link
-            href="/dashboard"
-            className="border-2 border-border-strong bg-transparent px-6 py-3 text-center text-sm font-bold uppercase tracking-wider text-foreground transition hover:bg-foreground hover:text-background"
-          >
-            Dashboard →
+          <Link href="/dashboard" className="btn-ghost">
+            <HugeiconsIcon icon={DashboardSquare01Icon} className="h-5 w-5" />
+            <span>Acceder a HQ</span>
           </Link>
         </div>
 
         {/* Counts */}
-        <div className="mt-12 grid grid-cols-2 gap-px border-2 border-border bg-border md:max-w-md">
-          <div className="bg-card px-4 py-3">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Torneos creados
+        <div className="mt-12 grid grid-cols-2 gap-2 md:max-w-md md:grid-cols-2">
+          <div className="hud-panel p-4">
+            <div className="tag-tactical">Operaciones</div>
+            <div className="display mt-1 text-3xl tabular-nums text-primary">
+              {String(counts.tournaments).padStart(3, '0')}
             </div>
-            <div className="mt-1 text-2xl font-bold tabular-nums">{counts.tournaments}</div>
           </div>
-          <div className="bg-card px-4 py-3">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Servers
+          <div className="hud-panel p-4">
+            <div className="tag-tactical">Bases activas</div>
+            <div className="display mt-1 text-3xl tabular-nums text-primary">
+              {String(counts.guilds).padStart(3, '0')}
             </div>
-            <div className="mt-1 text-2xl font-bold tabular-nums">{counts.guilds}</div>
           </div>
         </div>
       </section>
 
-      {/* Status bar */}
-      <footer className="mt-16 grid grid-cols-2 gap-px border-2 border-border bg-border md:grid-cols-4">
-        {cells.map((s) => (
-          <div key={s.k} className="bg-card px-4 py-3">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              {s.k}
+      {/* Status bar HUD */}
+      <footer className="mt-12">
+        <div className="mb-2 flex items-center gap-2 tag-tactical">
+          <HugeiconsIcon icon={ServerStack03Icon} className="h-3.5 w-3.5" />
+          <span>SISTEMAS // LIVE</span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          {cells.map((s) => (
+            <div key={s.k} className="hud-panel flex items-center gap-3 p-3">
+              <HugeiconsIcon
+                icon={s.icon}
+                className={`h-6 w-6 ${statusColor(s.v as StatusValue)}`}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="tag-tactical">{s.k}</div>
+                <div
+                  className={`display text-sm tracking-widest ${statusColor(s.v as StatusValue)}`}
+                >
+                  {s.v}
+                </div>
+              </div>
             </div>
-            <div className={`mt-1 text-sm font-bold ${statusColor(s.v as StatusValue)}`}>
-              {s.v}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </footer>
     </main>
   );

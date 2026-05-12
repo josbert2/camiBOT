@@ -1,5 +1,22 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  ArrowLeft01Icon,
+  ChampionIcon,
+  Target02Icon,
+  MedalFirstPlaceIcon,
+  StarIcon,
+  Shield01Icon,
+  MedalIcon,
+  Fire02Icon,
+  FlashIcon,
+  RocketIcon,
+  LockedIcon,
+  DiamondIcon,
+  RefreshIcon,
+  GameControllerIcon,
+} from '@hugeicons/core-free-icons';
 import { prisma } from '@camibot/db';
 import type { Metadata } from 'next';
 import type { TournamentFormat, TournamentStatus } from '@camibot/db';
@@ -8,6 +25,23 @@ import {
   computeHeadToHead,
   computeAchievements,
 } from '@/lib/player-stats';
+
+// Mapeo iconKey → HugeIcon component
+const ICON_MAP: Record<string, typeof Target02Icon> = {
+  target: Target02Icon,
+  crosshair: Target02Icon,
+  champion: ChampionIcon,
+  'medal-star': MedalFirstPlaceIcon,
+  star: StarIcon,
+  shield: Shield01Icon,
+  medal: MedalIcon,
+  fire: Fire02Icon,
+  flash: FlashIcon,
+  rocket: RocketIcon,
+  lock: LockedIcon,
+  diamond: DiamondIcon,
+  refresh: RefreshIcon,
+};
 
 export const dynamic = 'force-dynamic';
 
@@ -48,10 +82,10 @@ function statusClass(s: TournamentStatus): string {
 }
 
 function rankLabel(rank: number | null, status: string): string {
-  if (status === 'WINNER') return '🏆 Campeón';
+  if (status === 'WINNER') return 'CAMPEÓN';
   if (rank === null) return '—';
-  if (rank === 2) return '🥈 2°';
-  if (rank === 3) return '🥉 3°';
+  if (rank === 2) return '2° lugar';
+  if (rank === 3) return '3° lugar';
   return `#${rank}`;
 }
 
@@ -204,133 +238,133 @@ export default async function PlayerPage({ params }: PageProps) {
     <main className="mx-auto max-w-5xl px-6 py-12">
       <Link
         href="/players"
-        className="mb-6 inline-block text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground"
+        className="mb-6 inline-flex items-center gap-2 tag-tactical hover:text-foreground"
       >
-        ← Volver al ranking
+        <HugeiconsIcon icon={ArrowLeft01Icon} className="h-3 w-3" />
+        <span>Volver al ranking</span>
       </Link>
 
-      {/* Header */}
-      <header className="mb-8 flex items-start gap-6 border-b-2 border-border-strong pb-6">
+      {/* Header — dossier estilo expediente */}
+      <header className="mb-8 hud-panel flex items-start gap-6 p-6">
         {avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={avatar}
             alt={name}
-            className="h-24 w-24 rounded-full border-2 border-border-strong"
+            className="h-28 w-28 border-2 border-primary"
           />
         ) : (
-          <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-border-strong bg-muted text-3xl font-bold uppercase">
+          <div className="flex h-28 w-28 items-center justify-center border-2 border-primary bg-muted display text-5xl text-primary">
             {name.slice(0, 1)}
           </div>
         )}
         <div className="flex-1">
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            [jugador]
+          <div className="flex items-center gap-2 tag-tactical">
+            <HugeiconsIcon icon={GameControllerIcon} className="h-3.5 w-3.5" />
+            <span>// DOSSIER OPERADOR</span>
           </div>
-          <h1 className="mt-1 text-4xl font-bold uppercase tracking-tight md:text-5xl">
-            {name}
-          </h1>
+          <h1 className="stencil mt-1 text-4xl md:text-6xl">{name}</h1>
           {user.username !== name && (
             <div className="mt-1 text-xs text-muted-foreground">@{user.username}</div>
           )}
-          <div className="mt-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-            Discord ID: <code>{user.discordId}</code>
+          <div className="mt-3 inline-block border border-border bg-muted px-2 py-1">
+            <span className="tag-tactical">ID:</span>{' '}
+            <code className="text-[10px] text-foreground">{user.discordId}</code>
           </div>
         </div>
       </header>
 
-      {/* Stats */}
-      <div className="grid gap-px border-2 border-border bg-border md:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Torneos" value={tournamentsPlayed} />
-        <Stat label="Ganados" value={tournamentsWon} highlight />
-        <Stat label="Wins" value={totalWins} sub="partidos" />
-        <Stat label="Losses" value={totalLosses} sub="partidos" />
+      {/* Stats grid */}
+      <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-6">
+        <Stat label="Ops" value={tournamentsPlayed} />
+        <Stat label="Wins" value={tournamentsWon} highlight />
+        <Stat label="Kills" value={totalWins} sub="totales" />
+        <Stat label="Deaths" value={totalLosses} sub="totales" />
         <Stat label="KDA" value={kda} />
-        <Stat label="Puntos" value={totalPoints} sub={`${winRate}% WR`} />
+        <Stat label="XP" value={totalPoints} sub={`${winRate}% WR`} />
       </div>
 
       {/* Streaks */}
-      <div className="mt-px grid gap-px border-2 border-border bg-border md:grid-cols-2">
-        <div className="bg-card p-4">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            Racha actual
-          </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span
-              className={`text-3xl font-bold tabular-nums ${
-                streaks.current >= 3 ? 'text-warning' : ''
-              }`}
-            >
-              {streaks.current >= 3 && '🔥 '}
+      <div className="mt-2 grid gap-2 md:grid-cols-2">
+        <div className="hud-panel flex items-center gap-3 p-4">
+          {streaks.current >= 3 && (
+            <HugeiconsIcon icon={Fire02Icon} className="h-8 w-8 text-accent" />
+          )}
+          <div>
+            <div className="tag-tactical">Killstreak actual</div>
+            <div className="display mt-1 text-3xl tabular-nums text-accent">
               {streaks.current}
-            </span>
-            <span className="text-[10px] uppercase text-muted-foreground">
-              wins seguidos
-            </span>
+            </div>
           </div>
         </div>
-        <div className="bg-card p-4">
-          <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            Récord personal
-          </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tabular-nums">
+        <div className="hud-panel flex items-center gap-3 p-4">
+          <HugeiconsIcon icon={FlashIcon} className="h-8 w-8 text-primary" />
+          <div>
+            <div className="tag-tactical">Récord personal</div>
+            <div className="display mt-1 text-3xl tabular-nums text-primary">
               {streaks.best}
-            </span>
-            <span className="text-[10px] uppercase text-muted-foreground">
-              mejor racha histórica
-            </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Achievements */}
+      {/* Medallas / Logros */}
       <section className="mt-12">
-        <div className="mb-3 flex items-center justify-between border-b-2 border-border pb-2">
-          <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">
-            Logros
-          </h2>
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {unlockedCount} / {achievements.length}
+        <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
+          <div className="flex items-center gap-2 tag-tactical">
+            <HugeiconsIcon icon={MedalIcon} className="h-3.5 w-3.5" />
+            <span>// Condecoraciones</span>
+          </div>
+          <span className="display text-sm tabular-nums text-primary">
+            {String(unlockedCount).padStart(2, '0')} / {String(achievements.length).padStart(2, '0')}
           </span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {achievements.map((a) => (
-            <div
-              key={a.id}
-              className={`border-2 p-3 transition ${
-                a.unlocked
-                  ? 'border-success bg-success/5'
-                  : 'border-border bg-card/50 opacity-50'
-              }`}
-              title={a.description}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">{a.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-bold uppercase">{a.name}</div>
-                  <div className="truncate text-[10px] text-muted-foreground">
-                    {a.description}
+        <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {achievements.map((a) => {
+            const Icon = ICON_MAP[a.iconKey] ?? MedalIcon;
+            return (
+              <div
+                key={a.id}
+                className={`border p-3 transition ${
+                  a.unlocked
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border bg-card/50 opacity-40'
+                }`}
+                title={a.description}
+              >
+                <div className="flex items-center gap-2">
+                  <HugeiconsIcon
+                    icon={Icon}
+                    className={`h-8 w-8 ${a.unlocked ? 'text-accent' : 'text-muted-foreground'}`}
+                    strokeWidth={1.5}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="display truncate text-sm tracking-wider">
+                      {a.name}
+                    </div>
+                    <div className="truncate text-[10px] text-muted-foreground">
+                      {a.description}
+                    </div>
                   </div>
                 </div>
+                {a.progress && !a.unlocked && (
+                  <div className="mt-2">
+                    <div className="h-1 overflow-hidden bg-border">
+                      <div
+                        className="h-full bg-warning"
+                        style={{
+                          width: `${Math.min(100, (a.progress.current / a.progress.target) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <div className="mt-1 text-[10px] tabular-nums text-muted-foreground">
+                      {a.progress.current} / {a.progress.target}
+                    </div>
+                  </div>
+                )}
               </div>
-              {a.progress && !a.unlocked && (
-                <div className="mt-2">
-                  <div className="h-1 overflow-hidden bg-border">
-                    <div
-                      className="h-full bg-warning"
-                      style={{
-                        width: `${Math.min(100, (a.progress.current / a.progress.target) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <div className="mt-1 text-[10px] tabular-nums text-muted-foreground">
-                    {a.progress.current} / {a.progress.target}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

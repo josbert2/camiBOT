@@ -1,46 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Saira+Stencil+One&display=swap');
 @import 'tailwindcss';
 
 /* ============================================================
-   Tourney — brutalist dark
-   - Bordes duros 2-3px
-   - Esquinas rectas (radius 0-2px)
-   - Mono font default
-   - Contraste alto, accent Discord blurple
+   Tournify — Tactical / Combat OPS theme
+   - Paleta militar: olive, khaki, blood red, tactical amber
+   - Tipografía: Bebas Neue para displays/títulos · Geist Mono para data
+   - Bordes con notches HUD (via clip-path)
+   - Tokens semánticos: primary (olive), success, warning, danger
    ============================================================ */
 
 @theme inline {
-  --color-background: #0a0a0a;
-  --color-foreground: #fafafa;
+  --color-background: #0a0c0d;
+  --color-foreground: #e9e4d0;
 
-  --color-card: #111111;
-  --color-card-foreground: #fafafa;
+  --color-card: #14171a;
+  --color-card-foreground: #e9e4d0;
 
-  --color-muted: #1a1a1a;
-  --color-muted-foreground: #8a8a8a;
+  --color-muted: #1c2024;
+  --color-muted-foreground: #8a8676;
 
-  --color-border: #2a2a2a;
-  --color-border-strong: #ffffff;
-  --color-input: #1a1a1a;
-  --color-ring: #5865f2;
+  --color-border: #2a2f36;
+  --color-border-strong: #d4d4aa;
+  --color-input: #1c2024;
+  --color-ring: #a09642;
 
-  --color-primary: #5865f2;
-  --color-primary-foreground: #ffffff;
+  --color-primary: #8b9534;
+  --color-primary-foreground: #0a0c0d;
 
-  --color-secondary: #1a1a1a;
-  --color-secondary-foreground: #fafafa;
+  --color-secondary: #1c2024;
+  --color-secondary-foreground: #e9e4d0;
 
-  --color-accent: #eb459e;
-  --color-accent-foreground: #ffffff;
+  --color-accent: #d97706;
+  --color-accent-foreground: #0a0c0d;
 
-  --color-success: #57f287;
-  --color-warning: #fee75c;
-  --color-danger: #ed4245;
-  --color-danger-foreground: #ffffff;
+  --color-success: #65a30d;
+  --color-warning: #d97706;
+  --color-danger: #b91c1c;
+  --color-danger-foreground: #f5f5dc;
 
-  --radius: 2px;
+  --radius: 0px;
 
-  --font-sans: var(--font-geist-mono), ui-monospace, 'JetBrains Mono', 'Fira Code', monospace;
-  --font-display: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: 'Bebas Neue', 'Saira Stencil One', sans-serif;
+  --font-sans: var(--font-geist-mono), ui-monospace, 'JetBrains Mono', monospace;
 }
 
 @layer base {
@@ -56,6 +57,22 @@
     text-rendering: optimizeLegibility;
   }
 
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      radial-gradient(ellipse at top, rgba(139, 149, 52, 0.04), transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(217, 119, 6, 0.03), transparent 50%);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+  }
+
   ::selection {
     background: var(--color-primary);
     color: var(--color-primary-foreground);
@@ -63,11 +80,121 @@
 }
 
 @layer components {
-  .brutal-border {
-    border: 2px solid var(--color-border-strong);
-  }
-  .brutal-card {
+  .hud-panel {
     background: var(--color-card);
     border: 2px solid var(--color-border);
+    clip-path: polygon(
+      0 0,
+      calc(100% - 14px) 0,
+      100% 14px,
+      100% 100%,
+      14px 100%,
+      0 calc(100% - 14px)
+    );
+  }
+
+  .hud-panel-strong {
+    background: var(--color-card);
+    border: 2px solid var(--color-border-strong);
+    clip-path: polygon(
+      0 0,
+      calc(100% - 14px) 0,
+      100% 14px,
+      100% 100%,
+      14px 100%,
+      0 calc(100% - 14px)
+    );
+  }
+
+  .display {
+    font-family: var(--font-display);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .stencil {
+    font-family: 'Saira Stencil One', var(--font-display);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .tag-tactical {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+    font-weight: 700;
+  }
+
+  .btn-tactical {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+    border: 2px solid var(--color-border-strong);
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+    clip-path: polygon(
+      0 0,
+      calc(100% - 8px) 0,
+      100% 8px,
+      100% 100%,
+      8px 100%,
+      0 calc(100% - 8px)
+    );
+  }
+  .btn-tactical:hover {
+    background: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: var(--color-foreground);
+    border: 2px solid var(--color-border);
+    font-family: var(--font-display);
+    font-size: 0.875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.15s;
+  }
+  .btn-ghost:hover {
+    border-color: var(--color-border-strong);
+    background: var(--color-card);
+  }
+
+  .stat-block {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    padding: 1rem;
+    position: relative;
+  }
+  .stat-block::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--color-primary);
+  }
+
+  .scanlines {
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255, 255, 255, 0.02) 2px,
+      rgba(255, 255, 255, 0.02) 3px
+    );
   }
 }

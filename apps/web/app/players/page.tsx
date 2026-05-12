@@ -1,15 +1,31 @@
 import { prisma } from '@camibot/db';
 import Link from 'next/link';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  ChampionIcon,
+  Target02Icon,
+  RankingIcon,
+} from '@hugeicons/core-free-icons';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Jugadores — camiBOT',
+  title: 'Ranking — Tournify',
 };
 
+// Rangos militares por posición (1-5: oficiales, 6+: enlisted)
+function rankBadge(pos: number): { label: string; color: string } {
+  if (pos === 1) return { label: 'GEN', color: 'text-accent' };
+  if (pos === 2) return { label: 'COL', color: 'text-primary' };
+  if (pos === 3) return { label: 'MAJ', color: 'text-primary' };
+  if (pos <= 5) return { label: 'CPT', color: 'text-foreground' };
+  if (pos <= 10) return { label: 'LT', color: 'text-muted-foreground' };
+  if (pos <= 20) return { label: 'SGT', color: 'text-muted-foreground' };
+  return { label: 'PVT', color: 'text-muted-foreground' };
+}
+
 export default async function PlayersPage() {
-  // Agregamos por User: torneos jugados, ganados, W/L, puntos totales (suma cross-guild).
   const users = await prisma.user.findMany({
     where: { participations: { some: {} } },
     include: {
@@ -47,43 +63,42 @@ export default async function PlayersPage() {
     });
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
-      <header className="mb-8 border-b-2 border-border-strong pb-6">
-        <div className="mb-2 text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          [jugadores]
+    <main className="mx-auto max-w-5xl px-6 py-12">
+      <header className="mb-8 border-b border-border pb-4">
+        <div className="mb-2 flex items-center gap-2 tag-tactical">
+          <HugeiconsIcon icon={RankingIcon} className="h-3.5 w-3.5" />
+          <span>// OPERADORES</span>
         </div>
-        <h1 className="text-4xl font-bold uppercase tracking-tight md:text-5xl">
-          Ranking general
-        </h1>
+        <h1 className="stencil text-5xl md:text-6xl">Ranking general</h1>
         <p className="mt-2 text-xs uppercase tracking-widest text-muted-foreground">
-          Cross-server · todos los jugadores con al menos 1 torneo jugado
+          Cross-base · operadores con misiones registradas
         </p>
       </header>
 
       {rows.length === 0 ? (
-        <div className="border-2 border-dashed border-border bg-card/50 px-6 py-16 text-center">
-          <p className="text-sm font-bold uppercase tracking-wider">Sin jugadores todavía</p>
+        <div className="hud-panel px-6 py-16 text-center">
+          <p className="display text-lg">Sin operadores</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Se llena automáticamente cuando alguien se inscribe a un torneo.
+            Se llena cuando alguien se inscribe a un torneo.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto border-2 border-border">
+        <div className="overflow-x-auto border border-border bg-card">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b-2 border-border bg-muted text-[10px] uppercase tracking-widest text-muted-foreground">
-                <th className="px-3 py-2 text-left">#</th>
-                <th className="px-3 py-2 text-left">Jugador</th>
-                <th className="px-3 py-2 text-right tabular-nums">Torneos</th>
-                <th className="px-3 py-2 text-right tabular-nums">🏆</th>
-                <th className="px-3 py-2 text-right tabular-nums">W/L</th>
-                <th className="px-3 py-2 text-right tabular-nums">KDA</th>
-                <th className="px-3 py-2 text-right tabular-nums">Pts</th>
+              <tr className="border-b border-border bg-muted">
+                <th className="px-3 py-2 text-left tag-tactical">#</th>
+                <th className="px-3 py-2 text-left tag-tactical">Rango</th>
+                <th className="px-3 py-2 text-left tag-tactical">Operador</th>
+                <th className="px-3 py-2 text-right tag-tactical">Ops</th>
+                <th className="px-3 py-2 text-right tag-tactical">Wins</th>
+                <th className="px-3 py-2 text-right tag-tactical">K/D</th>
+                <th className="px-3 py-2 text-right tag-tactical">KDA</th>
+                <th className="px-3 py-2 text-right tag-tactical">XP</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r, i) => {
-                // KDA = wins / max(losses, 1). Perfect (sin perdidas) muestra "∞".
                 const kda =
                   r.losses === 0
                     ? r.wins > 0
@@ -92,12 +107,13 @@ export default async function PlayersPage() {
                     : (r.wins / r.losses).toFixed(2);
                 const kdaClass =
                   r.losses === 0 && r.wins > 0
-                    ? 'text-warning'
+                    ? 'text-accent'
                     : r.wins > r.losses
                       ? 'text-success'
                       : r.wins === r.losses
                         ? 'text-foreground'
                         : 'text-danger';
+                const rank = rankBadge(i + 1);
                 return (
                   <tr
                     key={r.id}
@@ -105,15 +121,24 @@ export default async function PlayersPage() {
                       i === 0 ? 'bg-primary/10' : ''
                     }`}
                   >
-                    <td className="px-3 py-2 font-bold tabular-nums">
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                    <td className="px-3 py-2 font-bold tabular-nums text-muted-foreground">
+                      {String(i + 1).padStart(2, '0')}
+                    </td>
+                    <td className={`px-3 py-2 display text-xs ${rank.color}`}>
+                      {rank.label}
                     </td>
                     <td className="px-3 py-2 font-bold">
                       <Link
                         href={`/players/${r.id}`}
-                        className="underline-offset-2 hover:underline"
+                        className="flex items-center gap-2 underline-offset-2 hover:underline"
                       >
-                        {r.name}
+                        {i === 0 && (
+                          <HugeiconsIcon
+                            icon={ChampionIcon}
+                            className="h-4 w-4 text-accent"
+                          />
+                        )}
+                        <span>{r.name}</span>
                       </Link>
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
@@ -130,7 +155,7 @@ export default async function PlayersPage() {
                     <td className={`px-3 py-2 text-right font-bold tabular-nums ${kdaClass}`}>
                       {kda}
                     </td>
-                    <td className="px-3 py-2 text-right text-lg font-bold tabular-nums">
+                    <td className="display px-3 py-2 text-right text-xl tabular-nums text-primary">
                       {r.points}
                     </td>
                   </tr>

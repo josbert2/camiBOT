@@ -109,7 +109,8 @@ export interface Achievement {
   id: string;
   name: string;
   description: string;
-  emoji: string;
+  /** Identificador del icono — el render lo mapea a HugeIcons */
+  iconKey: string;
   unlocked: boolean;
   progress?: { current: number; target: number };
 }
@@ -131,81 +132,81 @@ export interface AchievementInput {
 const ACHIEVEMENT_DEFS: Omit<Achievement, 'unlocked' | 'progress'>[] = [
   {
     id: 'first-blood',
-    name: 'Primer torneo',
+    name: 'Reclutado',
     description: 'Participá en tu primer torneo',
-    emoji: '🥁',
+    iconKey: 'target',
   },
   {
     id: 'first-win',
-    name: 'Estreno',
+    name: 'Primer kill',
     description: 'Gana tu primer match',
-    emoji: '✊',
+    iconKey: 'crosshair',
   },
   {
     id: 'champion',
-    name: 'Campeón',
+    name: 'Comandante',
     description: 'Gana un torneo',
-    emoji: '🏆',
+    iconKey: 'champion',
   },
   {
     id: 'champion-x3',
-    name: 'Triple corona',
+    name: 'Triple ofensiva',
     description: 'Gana 3 torneos',
-    emoji: '👑',
+    iconKey: 'medal-star',
   },
   {
     id: 'champion-x10',
     name: 'Leyenda',
     description: 'Gana 10 torneos',
-    emoji: '🌟',
+    iconKey: 'star',
   },
   {
     id: 'veteran',
     name: 'Veterano',
     description: 'Jugá 10 torneos',
-    emoji: '🎖️',
+    iconKey: 'shield',
   },
   {
     id: 'master',
-    name: 'Maestro',
+    name: 'Maestro táctico',
     description: 'Jugá 50 torneos',
-    emoji: '🧙',
+    iconKey: 'medal',
   },
   {
     id: 'streak-5',
     name: 'En llamas',
     description: 'Gana 5 matches seguidos',
-    emoji: '🔥',
+    iconKey: 'fire',
   },
   {
     id: 'streak-10',
     name: 'Imparable',
     description: 'Gana 10 matches seguidos',
-    emoji: '⚡',
+    iconKey: 'flash',
   },
   {
     id: 'streak-20',
-    name: 'Dios del bracket',
+    name: 'Killstreak',
     description: 'Gana 20 matches seguidos',
-    emoji: '💫',
+    iconKey: 'rocket',
   },
   {
     id: 'underdog',
     name: 'Underdog',
     description: 'Gana un torneo siendo seed bajo (segunda mitad)',
-    emoji: '🐺',
+    iconKey: 'lock',
   },
   {
     id: 'perfect-run',
-    name: 'Perfect run',
+    name: 'Operación perfecta',
     description: 'Gana un torneo sin perder ningún match',
-    emoji: '💎',
+    iconKey: 'diamond',
   },
   {
     id: 'comeback-kid',
-    name: 'Comeback kid',
+    name: 'Comeback',
     description: 'Gana un torneo desde el losers bracket',
-    emoji: '🔄',
+    iconKey: 'refresh',
   },
 ];
 
