@@ -64,6 +64,8 @@ const FORMAT_LABEL: Record<TournamentFormat, string> = {
   DOUBLE_ELIMINATION: 'Doble elim',
   ROUND_ROBIN: 'Round robin',
   SWISS: 'Suizo',
+  FFA: 'FFA',
+  GROUP_STAGE: 'Grupos',
 };
 
 function statusClass(s: TournamentStatus): string {

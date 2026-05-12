@@ -20,6 +20,8 @@ const formatLabel: Record<TournamentFormat, string> = {
   DOUBLE_ELIMINATION: 'Doble eliminación',
   ROUND_ROBIN: 'Round robin',
   SWISS: 'Sistema suizo',
+  FFA: 'FFA / Carrera',
+  GROUP_STAGE: 'Fase de grupos',
 };
 
 const statusLabel: Record<TournamentStatus, string> = {
