@@ -10,7 +10,13 @@ export const authConfig: NextAuthConfig = {
     Discord({
       clientId: process.env.DISCORD_CLIENT_ID,
       clientSecret: process.env.DISCORD_CLIENT_SECRET,
-      authorization: { params: { scope: 'identify email guilds' } },
+      // OJO: en Auth.js v5 si pasás authorization aquí REEMPLAZA el objeto
+      // completo del provider (no hace deep-merge). Hay que repetir la url
+      // para no romper la URL builder con "Invalid URL".
+      authorization: {
+        url: 'https://discord.com/api/oauth2/authorize',
+        params: { scope: 'identify email guilds' },
+      },
     }),
   ],
   session: { strategy: 'jwt' },

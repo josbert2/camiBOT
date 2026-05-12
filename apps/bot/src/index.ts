@@ -2,6 +2,8 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { env } from './lib/env.js';
 import { logger } from './lib/logger.js';
 import { registerEvents } from './events/index.js';
+import { startHeartbeat, stopHeartbeat } from './lib/heartbeat.js';
+import { setDiscordClient } from './lib/discord-client.js';
 
 const client = new Client({
   // Solo Guilds — slash commands y botones no necesitan más.
@@ -10,6 +12,7 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds],
 });
 
+setDiscordClient(client);
 registerEvents(client);
 
 process.on('unhandledRejection', (err) => logger.error({ err }, 'unhandledRejection'));
@@ -17,6 +20,7 @@ process.on('uncaughtException', (err) => logger.error({ err }, 'uncaughtExceptio
 
 async function shutdown(signal: string) {
   logger.info(`Received ${signal}, shutting down...`);
+  await stopHeartbeat();
   await client.destroy();
   process.exit(0);
 }
@@ -27,3 +31,5 @@ client.login(env.DISCORD_TOKEN).catch((err) => {
   logger.fatal({ err }, 'Login fallido');
   process.exit(1);
 });
+
+startHeartbeat();

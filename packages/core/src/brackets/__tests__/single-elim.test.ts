@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateSingleElim, applyMatchResult } from '../single-elim.js';
+import { generateSingleElim, applyMatchResult } from '../single-elim';
 import type { BracketSeed } from '@camibot/types';
 
 function mkSeeds(n: number): BracketSeed[] {

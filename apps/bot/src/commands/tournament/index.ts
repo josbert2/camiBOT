@@ -12,9 +12,9 @@ import { registrationButtons } from '../../lib/components.js';
 import { logger } from '../../lib/logger.js';
 
 const formatChoices = [
-  { name: 'Single elimination', value: 'SINGLE_ELIMINATION' as const },
-  { name: 'Double elimination (próximamente)', value: 'DOUBLE_ELIMINATION' as const },
-  { name: 'Round robin (próximamente)', value: 'ROUND_ROBIN' as const },
+  { name: 'Eliminación simple', value: 'SINGLE_ELIMINATION' as const },
+  { name: 'Doble eliminación', value: 'DOUBLE_ELIMINATION' as const },
+  { name: 'Round robin (todos contra todos)', value: 'ROUND_ROBIN' as const },
 ];
 
 const command: SlashCommand = {
@@ -62,6 +62,13 @@ const command: SlashCommand = {
               { name: 'Aleatorio (recomendado)', value: 'RANDOM' },
               { name: 'Por orden de registro', value: 'REGISTRATION' },
             ),
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName('team-size')
+            .setDescription('Tamaño de equipo (1=solo, 2=2v2, 3=3v3, etc)')
+            .setMinValue(1)
+            .setMaxValue(5),
         ),
     )
     .addSubcommand((sub) =>
@@ -90,6 +97,29 @@ const command: SlashCommand = {
         .addStringOption((o) =>
           o.setName('name').setDescription('Slug del torneo').setRequired(true).setAutocomplete(true),
         ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('checkin-open')
+        .setDescription('Abrir ventana de check-in con timer')
+        .addStringOption((o) =>
+          o.setName('name').setDescription('Slug del torneo').setRequired(true),
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName('minutes')
+            .setDescription('Duración del check-in (default 5)')
+            .setMinValue(1)
+            .setMaxValue(60),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('checkin-close')
+        .setDescription('Cerrar check-in manualmente y descartar no-show')
+        .addStringOption((o) =>
+          o.setName('name').setDescription('Slug del torneo').setRequired(true),
+        ),
     ),
 
   async execute(interaction) {
@@ -102,6 +132,10 @@ const command: SlashCommand = {
     }
     if (sub === 'cancel') return handleCancel(interaction);
     if (sub === 'view') return handleView(interaction);
+    if (sub === 'checkin-open' || sub === 'checkin-close') {
+      const { handleCheckin } = await import('./checkin.js');
+      return handleCheckin(interaction);
+    }
   },
 };
 
@@ -119,10 +153,11 @@ async function handleCreate(interaction: ChatInputCommandInteraction) {
   const seeding = (interaction.options.getString('seeding') ?? 'RANDOM') as
     | 'RANDOM'
     | 'REGISTRATION';
+  const teamSize = interaction.options.getInteger('team-size') ?? 1;
 
-  if (format !== 'SINGLE_ELIMINATION') {
+  if (format === 'SWISS') {
     await interaction.reply({
-      content: `Por ahora solo single elimination está implementado. ${format} llega en Fase 3.`,
+      content: 'El formato Suizo todavía no está implementado. Probá single elim, doble elim o round robin.',
       flags: MessageFlags.Ephemeral,
     });
     return;
@@ -146,14 +181,20 @@ async function handleCreate(interaction: ChatInputCommandInteraction) {
         status: 'REGISTRATION',
         maxParticipants,
         bestOf,
+        teamSize,
         seedingMode: seeding,
         channelId: interaction.channelId,
       },
     });
 
+    const components =
+      teamSize > 1
+        ? [(await import('../../lib/components.js')).teamButtons(tournament.id)]
+        : [registrationButtons(tournament.id, 'REGISTRATION')];
+
     const message = await interaction.editReply({
       embeds: [tournamentRegistrationEmbed(tournament, [])],
-      components: [registrationButtons(tournament.id, 'REGISTRATION')],
+      components,
     });
 
     await prisma.tournament.update({

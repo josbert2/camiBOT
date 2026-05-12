@@ -1,6 +1,18 @@
 import { type ChatInputCommandInteraction } from 'discord.js';
-import { prisma, type Match, type Participant, type User, type SeedingMode } from '@camibot/db';
-import { generateSingleElim, renderBracketText } from '@camibot/core';
+import {
+  prisma,
+  type Match,
+  type Participant,
+  type User,
+  type SeedingMode,
+  type TournamentFormat,
+} from '@camibot/db';
+import {
+  generateSingleElim,
+  generateRoundRobin,
+  generateDoubleElim,
+  renderBracketText,
+} from '@camibot/core';
 import type { BracketSeed, BracketMatch } from '@camibot/types';
 import { upsertGuild } from '../../lib/db-helpers.js';
 import { bracketEmbed } from '../../lib/embeds.js';
@@ -12,6 +24,7 @@ import {
   tryMoveToVoice,
 } from '../../lib/voice.js';
 import { logger } from '../../lib/logger.js';
+import { notifyMatchReady } from '../../lib/dm-notify.js';
 
 type ParticipantWithUser = Participant & { user: User };
 
@@ -38,8 +51,10 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
     });
     return;
   }
-  if (tournament.format !== 'SINGLE_ELIMINATION') {
-    await interaction.editReply({ content: 'Solo single elim está soportado por ahora.' });
+  if (tournament.format === 'SWISS') {
+    await interaction.editReply({
+      content: 'El formato Suizo todavía no está implementado.',
+    });
     return;
   }
   if (tournament.participants.length < 2) {
@@ -47,7 +62,32 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  // Ordenar según seedingMode (RANDOM por default)
+  // Validación de teams: todos los equipos completos
+  if ((tournament.teamSize ?? 1) > 1) {
+    const incomplete = tournament.participants.filter((p) => {
+      const tm = Array.isArray(p.teammates) ? (p.teammates as string[]) : [];
+      return 1 + tm.length < tournament.teamSize;
+    });
+    if (incomplete.length > 0) {
+      const names = incomplete.map((p) => p.teamName ?? '?').join(', ');
+      await interaction.editReply({
+        content: `No puedo iniciar: estos equipos están incompletos (${tournament.teamSize}v${tournament.teamSize}): ${names}`,
+      });
+      return;
+    }
+  }
+
+  // Validación específica para double elim: necesita potencia de 2
+  if (tournament.format === 'DOUBLE_ELIMINATION') {
+    const n = tournament.participants.length;
+    if ((n & (n - 1)) !== 0) {
+      await interaction.editReply({
+        content: `Doble eliminación necesita una cantidad de participantes potencia de 2 (2, 4, 8, 16, 32, 64, 128). Tenés ${n}.`,
+      });
+      return;
+    }
+  }
+
   const ordered = orderParticipants(tournament.participants, tournament.seedingMode);
 
   const seeds: BracketSeed[] = ordered.map((p, i) => ({
@@ -55,7 +95,8 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
     seed: i + 1,
   }));
 
-  const bracketMatches = generateSingleElim({ seeds });
+  // Selección del engine según formato
+  const bracketMatches = generateBracket(tournament.format, seeds);
   const totalRounds = Math.max(...bracketMatches.map((m) => m.round));
 
   // Persistir matches en transacción
@@ -75,12 +116,20 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
       });
       idMap.set(bm.id, created.id);
     }
+    // Re-mapear nextMatchId y loserNextMatchId a los CUIDs reales
     for (const bm of bracketMatches) {
-      if (!bm.nextMatchId) continue;
-      await tx.match.update({
-        where: { id: idMap.get(bm.id)! },
-        data: { nextMatchId: idMap.get(bm.nextMatchId) },
-      });
+      const realId = idMap.get(bm.id)!;
+      const nextReal = bm.nextMatchId ? idMap.get(bm.nextMatchId) : null;
+      const loserReal = bm.loserNextMatchId ? idMap.get(bm.loserNextMatchId) : null;
+      if (nextReal || loserReal) {
+        await tx.match.update({
+          where: { id: realId },
+          data: {
+            nextMatchId: nextReal ?? null,
+            loserNextMatchId: loserReal ?? null,
+          },
+        });
+      }
     }
     for (const seed of seeds) {
       await tx.participant.update({
@@ -98,7 +147,16 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
     });
   });
 
-  // Crear categoría + VCs para todos los matches READY de round 1
+  // DM a los participantes de matches READY de R1
+  const readyR1Ids = bracketMatches
+    .filter((m) => m.participant1Id && m.participant2Id)
+    .map((m) => idMap.get(m.id)!)
+    .filter(Boolean);
+  for (const realId of readyR1Ids) {
+    await notifyMatchReady(realId).catch(() => {});
+  }
+
+  // Crear categoría + VCs para todos los matches READY de ronda 1
   const nameMap = new Map(ordered.map((p) => [p.id, p.user.globalName ?? p.user.username]));
 
   let vcSummary = '';
@@ -114,7 +172,6 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
         (m) => m.participant1Id && m.participant2Id,
       );
 
-      // Map participantId → discordId para auto-move
       const discordIdMap = new Map(ordered.map((p) => [p.id, p.user.discordId]));
       const canMove = canMoveMembers(interaction.guild);
 
@@ -133,7 +190,6 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
           data: { voiceChannelId: vc.id },
         });
 
-        // Auto-move + mentions
         const p1DiscordId = discordIdMap.get(bm.participant1Id!) ?? '';
         const p2DiscordId = discordIdMap.get(bm.participant2Id!) ?? '';
         const mentions: string[] = [];
@@ -150,10 +206,14 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
         vcLines.push(`• <#${vc.id}> ${mentions.join(' vs ')}`);
       }
 
+      const lobbyId = process.env.LOBBY_VOICE_CHANNEL_ID;
+      const lobbyNote = lobbyId
+        ? `\n💡 **Entren al lobby <#${lobbyId}> antes** y los muevo automáticamente al VC de su match.`
+        : '';
       const moveNote = canMove
         ? '\n_Si ya estabas en voice, te moví automáticamente al VC de tu match._'
         : '\n_No tengo permiso "Mover miembros" — entrá manualmente al VC._';
-      vcSummary = `\n\n**Canales de voz** (${vcLines.length} matches de ronda 1):\n${vcLines.join('\n')}${moveNote}`;
+      vcSummary = `\n\n**Canales de voz** (${vcLines.length} matches con jugadores listos):\n${vcLines.join('\n')}${lobbyNote}${moveNote}`;
     } catch (err) {
       logger.error({ err }, 'Fallo creando categoría/VCs');
       vcSummary = '\n\n_Error creando canales de voz — revisar logs y permisos._';
@@ -162,17 +222,18 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
     vcSummary = '\n\n_Falta permiso "Gestionar canales" para crear los VCs automáticamente._';
   }
 
-  // Render bracket text
+  // Render texto: para round-robin/double-elim mostramos resumen, no bracket tree.
   const text = renderBracketText(bracketMatches, {
     getName: (id) => nameMap.get(id) ?? '?',
   });
 
   const seedingLabel = tournament.seedingMode === 'RANDOM' ? 'aleatorio' : 'por registro';
+  const formatLabel = formatToLabel(tournament.format);
   const webUrl = process.env.AUTH_URL ?? 'http://localhost:3001';
   const bracketLink = `\n\n🔗 Ver bracket completo: ${webUrl}/t/${tournament.id}`;
 
   await interaction.editReply({
-    content: `🚀  **${tournament.name}** iniciado con ${ordered.length} participantes (seeding: ${seedingLabel}).${vcSummary}${bracketLink}`,
+    content: `🚀  **${tournament.name}** iniciado · ${formatLabel} · ${ordered.length} participantes · seeding ${seedingLabel}.${vcSummary}${bracketLink}`,
     embeds: [bracketEmbed(tournament.name, text)],
     components: [],
   });
@@ -180,11 +241,42 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
   logger.info(
     {
       tournamentId: tournament.id,
+      format: tournament.format,
       participants: ordered.length,
       seedingMode: tournament.seedingMode,
     },
     'Tournament started',
   );
+}
+
+function generateBracket(format: TournamentFormat, seeds: BracketSeed[]): BracketMatch[] {
+  switch (format) {
+    case 'SINGLE_ELIMINATION':
+      return generateSingleElim({ seeds });
+    case 'DOUBLE_ELIMINATION':
+      return generateDoubleElim({ seeds });
+    case 'ROUND_ROBIN':
+      return generateRoundRobin({ seeds });
+    case 'SWISS':
+      throw new Error('Swiss no implementado');
+    default: {
+      const _exhaustive: never = format;
+      throw new Error(`Formato desconocido: ${_exhaustive as string}`);
+    }
+  }
+}
+
+function formatToLabel(format: TournamentFormat): string {
+  switch (format) {
+    case 'SINGLE_ELIMINATION':
+      return 'eliminación simple';
+    case 'DOUBLE_ELIMINATION':
+      return 'doble eliminación';
+    case 'ROUND_ROBIN':
+      return 'round robin';
+    case 'SWISS':
+      return 'suizo';
+  }
 }
 
 function matchStatus(bm: BracketMatch): Match['status'] {
@@ -200,10 +292,9 @@ function orderParticipants(
     (a, b) => a.registeredAt.getTime() - b.registeredAt.getTime(),
   );
   if (mode === 'RANDOM') return shuffle(byRegistration);
-  return byRegistration; // REGISTRATION o MANUAL (fallback)
+  return byRegistration;
 }
 
-/** Fisher-Yates shuffle in-place. */
 function shuffle<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

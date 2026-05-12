@@ -59,20 +59,37 @@ export function tournamentRegistrationEmbed(
   // Lista de participantes (si vienen con user, mostramos nombres)
   if (participants.length > 0 && 'user' in participants[0]!) {
     const list = participants as ParticipantWithUser[];
-    const lines = list.map((p, i) => {
-      const name = p.user.globalName ?? p.user.username;
-      const mention = p.user.discordId.startsWith('dev_')
-        ? `\`${name}\``
-        : `<@${p.user.discordId}>`;
-      const tag = p.status === 'CHECKED_IN' ? ' ✓' : '';
-      return `\`${String(i + 1).padStart(2, '0')}\` ${mention}${tag}`;
-    });
-    // Discord embed field: max 1024 chars. Si pasa, truncamos.
-    const value = lines.join('\n');
-    embed.addFields({
-      name: `Participantes (${list.length})`,
-      value: value.length > 1024 ? value.slice(0, 1000) + '\n... y más' : value,
-    });
+    const isTeams = (tournament.teamSize ?? 1) > 1;
+
+    if (isTeams) {
+      const tSize = tournament.teamSize;
+      const lines = list.map((p, i) => {
+        const captain = p.user.globalName ?? p.user.username;
+        const teammates = Array.isArray(p.teammates) ? (p.teammates as string[]) : [];
+        const total = 1 + teammates.length;
+        const fill = total >= tSize ? '✅' : `${total}/${tSize}`;
+        return `\`${String(i + 1).padStart(2, '0')}\` **${p.teamName ?? '(sin nombre)'}** ${fill} · cap: ${captain}`;
+      });
+      const value = lines.join('\n');
+      embed.addFields({
+        name: `Equipos (${list.length}) · ${tSize}v${tSize}`,
+        value: value.length > 1024 ? value.slice(0, 1000) + '\n... y más' : value,
+      });
+    } else {
+      const lines = list.map((p, i) => {
+        const name = p.user.globalName ?? p.user.username;
+        const mention = p.user.discordId.startsWith('dev_')
+          ? `\`${name}\``
+          : `<@${p.user.discordId}>`;
+        const tag = p.status === 'CHECKED_IN' ? ' ✓' : '';
+        return `\`${String(i + 1).padStart(2, '0')}\` ${mention}${tag}`;
+      });
+      const value = lines.join('\n');
+      embed.addFields({
+        name: `Participantes (${list.length})`,
+        value: value.length > 1024 ? value.slice(0, 1000) + '\n... y más' : value,
+      });
+    }
   }
 
   embed.setFooter({ text: `slug: ${tournament.slug}` }).setTimestamp(tournament.updatedAt);

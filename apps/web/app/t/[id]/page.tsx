@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@camibot/db';
 import { BracketSVG } from '@/components/bracket-svg';
+import { StandingsTable } from '@/components/standings-table';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -17,10 +18,10 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const FORMAT_LABELS: Record<string, string> = {
-  SINGLE_ELIMINATION: 'Single elimination',
-  DOUBLE_ELIMINATION: 'Double elimination',
+  SINGLE_ELIMINATION: 'Eliminación simple',
+  DOUBLE_ELIMINATION: 'Doble eliminación',
   ROUND_ROBIN: 'Round robin',
-  SWISS: 'Swiss',
+  SWISS: 'Suizo',
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -96,31 +97,87 @@ export default async function TournamentPage({ params }: PageProps) {
         />
       </div>
 
-      {/* Bracket */}
-      <section className="mb-12">
-        <div className="mb-3 text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          [bracket]
-        </div>
-        <BracketSVG
-          matches={tournament.matches.map((m) => ({
-            id: m.id,
-            round: m.round,
-            matchNumber: m.matchNumber,
-            participant1Id: m.participant1Id,
-            participant2Id: m.participant2Id,
-            winnerId: m.winnerId,
-            scoreP1: m.scoreP1,
-            scoreP2: m.scoreP2,
-            status: m.status,
-            nextMatchId: m.nextMatchId,
-          }))}
-          participants={tournament.participants.map((p) => ({
-            id: p.id,
-            name: p.user.globalName ?? p.user.username,
-            seed: p.seed,
-          }))}
-        />
-      </section>
+      {/* Bracket / Tabla según formato */}
+      {(() => {
+        const allMatches = tournament.matches.map((m) => ({
+          id: m.id,
+          round: m.round,
+          matchNumber: m.matchNumber,
+          participant1Id: m.participant1Id,
+          participant2Id: m.participant2Id,
+          winnerId: m.winnerId,
+          scoreP1: m.scoreP1,
+          scoreP2: m.scoreP2,
+          status: m.status,
+          nextMatchId: m.nextMatchId,
+          bracketSide: m.bracketSide,
+        }));
+        const participants = tournament.participants.map((p) => ({
+          id: p.id,
+          name: p.user.globalName ?? p.user.username,
+          seed: p.seed,
+        }));
+
+        if (tournament.format === 'ROUND_ROBIN') {
+          return (
+            <section className="mb-12">
+              <div className="mb-3 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                [tabla de posiciones]
+              </div>
+              <StandingsTable
+                participants={participants}
+                matches={tournament.matches.map((m) => ({
+                  participant1Id: m.participant1Id,
+                  participant2Id: m.participant2Id,
+                  winnerId: m.winnerId,
+                  status: m.status,
+                }))}
+                champion={winner?.id ?? null}
+              />
+            </section>
+          );
+        }
+
+        if (tournament.format === 'DOUBLE_ELIMINATION') {
+          const wb = allMatches.filter((m) => m.bracketSide === 'WINNERS');
+          const lb = allMatches.filter((m) => m.bracketSide === 'LOSERS');
+          const gf = allMatches.filter((m) => m.bracketSide === 'GRAND_FINAL');
+          return (
+            <section className="mb-12 space-y-10">
+              <div>
+                <div className="mb-3 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                  [winners bracket]
+                </div>
+                <BracketSVG matches={wb} participants={participants} />
+              </div>
+              <div>
+                <div className="mb-3 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                  [losers bracket]
+                </div>
+                <BracketSVG matches={lb} participants={participants} />
+              </div>
+              {gf.length > 0 && (
+                <div>
+                  <div className="mb-3 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                    [grand final]
+                  </div>
+                  <BracketSVG matches={gf} participants={participants} />
+                </div>
+              )}
+            </section>
+          );
+        }
+
+        // Single elim (default)
+        return (
+          <section className="mb-12">
+            <div className="mb-3 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+              [bracket]
+            </div>
+            <BracketSVG matches={allMatches} participants={participants} />
+          </section>
+        );
+      })()}
 
       {/* Participants */}
       <section>

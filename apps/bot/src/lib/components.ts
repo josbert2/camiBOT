@@ -34,3 +34,23 @@ export function registrationButtons(
 
   return row.toJSON() as APIActionRowComponent<APIButtonComponent>;
 }
+
+export function teamButtons(
+  tournamentId: string,
+): APIActionRowComponent<APIButtonComponent> {
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`tournament:team-create:${tournamentId}`)
+      .setLabel('Crear equipo')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`tournament:team-join:${tournamentId}`)
+      .setLabel('Unirme a un equipo')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`tournament:team-leave:${tournamentId}`)
+      .setLabel('Salirme')
+      .setStyle(ButtonStyle.Secondary),
+  );
+  return row.toJSON() as APIActionRowComponent<APIButtonComponent>;
+}

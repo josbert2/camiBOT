@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { standardSeeding, nextPowerOfTwo } from '../seeding.js';
+import { standardSeeding, nextPowerOfTwo } from '../seeding';
 
 describe('standardSeeding', () => {
   it('size 2', () => {

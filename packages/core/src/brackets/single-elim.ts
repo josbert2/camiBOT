@@ -1,5 +1,5 @@
 import type { BracketSeed, BracketMatch } from '@camibot/types';
-import { standardSeeding, nextPowerOfTwo } from './seeding.js';
+import { standardSeeding, nextPowerOfTwo } from './seeding';
 
 export interface GenerateSingleElimInput {
   seeds: BracketSeed[]; // ordenados por seed (1, 2, 3, ...) — si no, los re-ordeno
