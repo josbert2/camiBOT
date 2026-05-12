@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { prisma } from '@camibot/db';
 import type { Metadata } from 'next';
 
@@ -35,7 +36,7 @@ export default async function LeaderboardPage({ params }: PageProps) {
       entries: {
         orderBy: { points: 'desc' },
         take: 50,
-        include: { user: { select: { username: true, globalName: true, avatar: true } } },
+        include: { user: { select: { id: true, username: true, globalName: true, avatar: true } } },
       },
     },
   });
@@ -91,7 +92,12 @@ export default async function LeaderboardPage({ params }: PageProps) {
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                     </td>
                     <td className="px-3 py-2">
-                      <div className={`font-bold ${isTop3 ? '' : ''}`}>{name}</div>
+                      <Link
+                        href={`/players/${e.user.id}`}
+                        className="font-bold underline-offset-2 hover:underline"
+                      >
+                        {name}
+                      </Link>
                     </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {e.tournamentsPlayed}

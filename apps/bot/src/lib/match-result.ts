@@ -7,6 +7,7 @@ import { logger } from './logger.js';
 import { updateLeaderboardForCompletedTournament } from './leaderboard.js';
 import { announceTournamentCompletion } from './announce.js';
 import { notifyMatchReady } from './dm-notify.js';
+import { announceStreakIfMilestone } from './streak-announce.js';
 
 export interface ApplyMatchResultInput {
   tournamentId: string;
@@ -208,6 +209,9 @@ export async function applyMatchResult(
   if (result.nextMatchBecameReady && result.nextMatchId) {
     await notifyMatchReady(result.nextMatchId);
   }
+
+  // Anuncio de racha milestone (cross-torneos)
+  await announceStreakIfMilestone(input.winnerId).catch(() => {});
 
   // Fuera de la tx: leaderboard + anuncio cuando se completa el torneo
   if (result.tournamentDone) {

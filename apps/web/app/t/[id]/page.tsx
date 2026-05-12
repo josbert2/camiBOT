@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { prisma } from '@camibot/db';
 import { BracketSVG } from '@/components/bracket-svg';
 import { StandingsTable } from '@/components/standings-table';
@@ -186,9 +187,10 @@ export default async function TournamentPage({ params }: PageProps) {
         </div>
         <div className="grid grid-cols-2 gap-px border-2 border-border bg-border sm:grid-cols-3 md:grid-cols-4">
           {tournament.participants.map((p) => (
-            <div
+            <Link
               key={p.id}
-              className={`bg-card px-4 py-3 ${p.status === 'WINNER' ? 'bg-primary text-primary-foreground' : ''}`}
+              href={`/players/${p.userId}`}
+              className={`block bg-card px-4 py-3 transition hover:brightness-125 ${p.status === 'WINNER' ? 'bg-primary text-primary-foreground' : ''}`}
             >
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
                 seed {p.seed ? String(p.seed).padStart(2, '0') : '--'}
@@ -199,7 +201,7 @@ export default async function TournamentPage({ params }: PageProps) {
               <div className="text-[10px] uppercase text-muted-foreground">
                 {p.wins}W · {p.losses}L
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>

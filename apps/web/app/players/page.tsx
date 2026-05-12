@@ -1,4 +1,5 @@
 import { prisma } from '@camibot/db';
+import Link from 'next/link';
 import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
@@ -107,7 +108,14 @@ export default async function PlayersPage() {
                     <td className="px-3 py-2 font-bold tabular-nums">
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                     </td>
-                    <td className="px-3 py-2 font-bold">{r.name}</td>
+                    <td className="px-3 py-2 font-bold">
+                      <Link
+                        href={`/players/${r.id}`}
+                        className="underline-offset-2 hover:underline"
+                      >
+                        {r.name}
+                      </Link>
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums">
                       {r.tournamentsPlayed}
                     </td>
