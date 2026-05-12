@@ -93,10 +93,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const u = await prisma.user.findUnique({
     where: { id },
-    select: { username: true, globalName: true },
+    include: {
+      _count: { select: { participations: true } },
+      participations: { select: { status: true } },
+    },
   });
+  if (!u) return { title: 'Operador' };
+  const name = u.globalName ?? u.username;
+  const wins = u.participations.filter((p) => p.status === 'WINNER').length;
+  const played = u._count.participations;
+  const desc = `Perfil de ${name} en Tournify. ${played} torneos jugados, ${wins} ganados. Stats, killstreak, condecoraciones y rivalidades.`;
   return {
-    title: u ? `${u.globalName ?? u.username} — camiBOT` : 'Jugador — camiBOT',
+    title: name,
+    description: desc,
+    openGraph: { title: name, description: desc, type: 'profile' },
+    twitter: { card: 'summary', title: name, description: desc },
   };
 }
 

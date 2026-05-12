@@ -27,12 +27,31 @@ const FORMAT_LABELS: Record<string, string> = {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const tournament = await prisma.tournament.findUnique({
+  const t = await prisma.tournament.findUnique({
     where: { id },
-    select: { name: true },
+    select: {
+      name: true,
+      description: true,
+      format: true,
+      status: true,
+      maxParticipants: true,
+      _count: { select: { participants: true } },
+      guild: { select: { name: true } },
+    },
   });
+  if (!t) return { title: 'Torneo' };
+  const desc =
+    t.description ||
+    `${t._count.participants}/${t.maxParticipants} participantes · ${t.format.toLowerCase().replace(/_/g, ' ')} · ${t.guild.name}. Bracket en vivo.`;
   return {
-    title: tournament?.name ? `${tournament.name} — camiBOT` : 'Torneo — camiBOT',
+    title: t.name,
+    description: desc,
+    openGraph: {
+      title: t.name,
+      description: desc,
+      type: 'article',
+    },
+    twitter: { card: 'summary_large_image', title: t.name, description: desc },
   };
 }
 
