@@ -7,6 +7,10 @@ import {
   computeSwissStandings,
   defaultSwissRounds,
   generateNextSwissRound,
+  rankPlayoffsQualifiers,
+  generatePlayoffMatches,
+  PLAYOFF_ROUND_OFFSET,
+  type GroupStanding,
 } from '@camibot/core';
 import { logger } from './logger.js';
 import { updateLeaderboardForCompletedTournament } from './leaderboard.js';
@@ -282,6 +286,160 @@ export async function applyMatchResult(
             }
           }
           result.extraNote = ` Ronda ${nextRoundNum}/${maxRounds} iniciada.`;
+        }
+      }
+    } else if (fmt === 'GROUP_STAGE') {
+      // Detectar si estamos en group phase (round < OFFSET) o playoffs (round >= OFFSET)
+      const isPlayoff = match.round >= PLAYOFF_ROUND_OFFSET;
+
+      if (isPlayoff) {
+        // Comportamiento single-elim para playoffs
+        if (loserId) {
+          await tx.participant.update({
+            where: { id: loserId },
+            data: { status: 'ELIMINATED' },
+          });
+        }
+        const r = await advanceWinnerToNext(tx, match, input.winnerId);
+        result.nextMatchBecameReady = r.becameReady;
+        result.nextMatchId = r.nextMatchId;
+        if (!match.nextMatchId) {
+          // Final de playoffs = final del torneo
+          await tx.tournament.update({
+            where: { id: tournament.id },
+            data: { status: 'COMPLETED', endedAt: new Date() },
+          });
+          await tx.participant.update({
+            where: { id: input.winnerId },
+            data: { status: 'WINNER', finalRank: 1 },
+          });
+          result.tournamentDone = true;
+        }
+      } else {
+        // Group phase: verificar si terminó TODA la fase de grupos
+        const remainingGroup = await tx.match.count({
+          where: {
+            tournamentId: tournament.id,
+            round: { lt: PLAYOFF_ROUND_OFFSET },
+            status: { in: ['PENDING', 'READY', 'IN_PROGRESS'] },
+          },
+        });
+        if (remainingGroup === 0) {
+          // Calcular standings por grupo
+          const participants = await tx.participant.findMany({
+            where: { tournamentId: tournament.id },
+            select: {
+              id: true,
+              groupNumber: true,
+            },
+          });
+          const groupMatches = await tx.match.findMany({
+            where: {
+              tournamentId: tournament.id,
+              round: { lt: PLAYOFF_ROUND_OFFSET },
+              status: 'COMPLETED',
+            },
+            select: { participant1Id: true, participant2Id: true, winnerId: true },
+          });
+
+          // Por grupo, calcular standings
+          const groupedStandings: GroupStanding[] = [];
+          const byGroup = new Map<number, string[]>();
+          for (const p of participants) {
+            if (!p.groupNumber) continue;
+            if (!byGroup.has(p.groupNumber)) byGroup.set(p.groupNumber, []);
+            byGroup.get(p.groupNumber)!.push(p.id);
+          }
+          for (const [gNum, pIds] of byGroup) {
+            const matchesOfGroup = groupMatches.filter(
+              (m) =>
+                pIds.includes(m.participant1Id ?? '') &&
+                pIds.includes(m.participant2Id ?? ''),
+            );
+            const s = computeStandings(
+              pIds,
+              matchesOfGroup
+                .filter((m) => m.winnerId && m.participant1Id && m.participant2Id)
+                .map((m) => ({
+                  participant1Id: m.participant1Id!,
+                  participant2Id: m.participant2Id!,
+                  winnerId: m.winnerId!,
+                })),
+            );
+            for (let i = 0; i < s.length; i++) {
+              groupedStandings.push({
+                participantId: s[i]!.participantId,
+                groupNumber: gNum,
+                positionInGroup: i + 1,
+                points: s[i]!.points,
+                wins: s[i]!.wins,
+                losses: s[i]!.losses,
+              });
+            }
+          }
+
+          const advance = tournament.advancePerGroup ?? 2;
+          const qualified = rankPlayoffsQualifiers(groupedStandings, advance);
+          if (qualified.length < 2) {
+            // No alcanza para playoffs — terminamos
+            await tx.tournament.update({
+              where: { id: tournament.id },
+              data: { status: 'COMPLETED', endedAt: new Date() },
+            });
+            result.tournamentDone = true;
+          } else {
+            // Generar playoffs y persistirlos
+            const playoffMatches = generatePlayoffMatches(qualified);
+            const idMap = new Map<string, string>();
+            for (const pm of playoffMatches) {
+              const isBye =
+                (pm.participant1Id && !pm.participant2Id) ||
+                (!pm.participant1Id && pm.participant2Id);
+              const byeW = isBye ? (pm.participant1Id ?? pm.participant2Id) : null;
+              const created = await tx.match.create({
+                data: {
+                  tournamentId: tournament.id,
+                  round: pm.round,
+                  matchNumber: pm.matchNumber,
+                  bracketSide: pm.bracketSide,
+                  participant1Id: pm.participant1Id,
+                  participant2Id: pm.participant2Id,
+                  status: isBye
+                    ? 'COMPLETED'
+                    : pm.participant1Id && pm.participant2Id
+                      ? 'READY'
+                      : 'PENDING',
+                  ...(isBye && byeW
+                    ? { winnerId: byeW, scoreP1: 1, scoreP2: 0, completedAt: new Date() }
+                    : {}),
+                },
+              });
+              idMap.set(pm.id, created.id);
+            }
+            // Re-link nextMatchId (mapeo de id string → CUID real)
+            for (const pm of playoffMatches) {
+              if (!pm.nextMatchId) continue;
+              const realId = idMap.get(pm.id);
+              const realNext = idMap.get(pm.nextMatchId);
+              if (realId && realNext) {
+                await tx.match.update({
+                  where: { id: realId },
+                  data: { nextMatchId: realNext },
+                });
+              }
+            }
+            // Eliminar a los que NO clasificaron
+            const qualifiedSet = new Set(qualified.map((q) => q.participantId));
+            for (const p of participants) {
+              if (!qualifiedSet.has(p.id)) {
+                await tx.participant.update({
+                  where: { id: p.id },
+                  data: { status: 'ELIMINATED' },
+                });
+              }
+            }
+            result.extraNote = ` Playoffs iniciados con ${qualified.length} clasificados.`;
+          }
         }
       }
     } else if (fmt === 'ROUND_ROBIN') {

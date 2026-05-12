@@ -26,5 +26,14 @@ export {
   type SwissStanding,
   type CompletedSwissMatch,
 } from './brackets/swiss';
+export {
+  splitIntoGroups,
+  generateGroupStageMatches,
+  generatePlayoffMatches,
+  rankPlayoffsQualifiers,
+  PLAYOFF_ROUND_OFFSET,
+  type GroupStanding,
+  type SplitGroupsResult,
+} from './brackets/groups';
 export { renderBracketText, type RenderOptions } from './brackets/render';
 export { standardSeeding, nextPowerOfTwo } from './brackets/seeding';

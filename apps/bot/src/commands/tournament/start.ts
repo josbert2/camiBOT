@@ -12,6 +12,8 @@ import {
   generateRoundRobin,
   generateDoubleElim,
   generateSwissRoundOne,
+  splitIntoGroups,
+  generateGroupStageMatches,
   renderBracketText,
 } from '@camibot/core';
 import type { BracketSeed, BracketMatch } from '@camibot/types';
@@ -91,7 +93,16 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
   }));
 
   // Selección del engine según formato
-  const bracketMatches = generateBracket(tournament.format, seeds);
+  let bracketMatches: BracketMatch[];
+  let groupAssignments: Map<string, number> | null = null;
+  if (tournament.format === 'GROUP_STAGE') {
+    const groupCount = tournament.groupCount ?? 2;
+    const split = splitIntoGroups(seeds, groupCount);
+    bracketMatches = generateGroupStageMatches(split.groups);
+    groupAssignments = split.assignment;
+  } else {
+    bracketMatches = generateBracket(tournament.format, seeds);
+  }
   const totalRounds = bracketMatches.length
     ? Math.max(...bracketMatches.map((m) => m.round))
     : 1;
@@ -146,9 +157,13 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
       }
     }
     for (const seed of seeds) {
+      const gNum = groupAssignments?.get(seed.participantId) ?? null;
       await tx.participant.update({
         where: { id: seed.participantId },
-        data: { seed: seed.seed },
+        data: {
+          seed: seed.seed,
+          ...(gNum !== null ? { groupNumber: gNum } : {}),
+        },
       });
     }
     await tx.tournament.update({
@@ -276,9 +291,11 @@ function generateBracket(format: TournamentFormat, seeds: BracketSeed[]): Bracke
     case 'FFA':
       // FFA no genera matches — cada participante reporta su score con /score submit
       return [];
-    case 'GROUP_STAGE':
-      // Stub: a implementar en commit aparte. Por ahora generamos RR como fallback.
-      return generateRoundRobin({ seeds });
+    case 'GROUP_STAGE': {
+      // No genera matches acá — se hace fuera (necesita acceso al tournament.groupCount).
+      // Marcador vacío; el handler de start hace el bypass.
+      return [];
+    }
     default: {
       const _exhaustive: never = format;
       throw new Error(`Formato desconocido: ${_exhaustive as string}`);

@@ -5,6 +5,8 @@ import { BracketSVG } from '@/components/bracket-svg';
 import { StandingsTable } from '@/components/standings-table';
 import { SwissStandingsTable } from '@/components/swiss-standings-table';
 import { FfaStandingsTable } from '@/components/ffa-standings-table';
+import { GroupStageTable } from '@/components/group-stage-table';
+import { PLAYOFF_ROUND_OFFSET } from '@camibot/core';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -141,6 +143,40 @@ export default async function TournamentPage({ params }: PageProps) {
           name: p.user.globalName ?? p.user.username,
           seed: p.seed,
         }));
+
+        if (tournament.format === 'GROUP_STAGE') {
+          const playoffMatches = allMatches.filter((m) => m.round >= PLAYOFF_ROUND_OFFSET);
+          const groupParticipants = tournament.participants.map((p) => ({
+            id: p.id,
+            name: p.user.globalName ?? p.user.username,
+            seed: p.seed,
+            groupNumber: p.groupNumber,
+          }));
+          return (
+            <section className="mb-12 space-y-10">
+              <div>
+                <div className="mb-3 tag-tactical">[fase de grupos]</div>
+                <GroupStageTable
+                  participants={groupParticipants}
+                  matches={tournament.matches.map((m) => ({
+                    participant1Id: m.participant1Id,
+                    participant2Id: m.participant2Id,
+                    winnerId: m.winnerId,
+                    status: m.status,
+                    round: m.round,
+                  }))}
+                  playoffOffset={PLAYOFF_ROUND_OFFSET}
+                />
+              </div>
+              {playoffMatches.length > 0 && (
+                <div>
+                  <div className="mb-3 tag-tactical">[playoffs]</div>
+                  <BracketSVG matches={playoffMatches} participants={participants} />
+                </div>
+              )}
+            </section>
+          );
+        }
 
         if (tournament.format === 'FFA') {
           const ffaParticipants = tournament.participants.map((p) => ({
