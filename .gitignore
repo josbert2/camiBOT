@@ -34,3 +34,8 @@ coverage/
 
 # OS
 Thumbs.db
+
+# wzstats-scraper output
+apps/web/public/wz/dumps/
+tools/wzstats-scraper/logs/
+tools/wzstats-scraper/node_modules/

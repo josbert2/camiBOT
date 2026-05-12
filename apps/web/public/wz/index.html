@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Armas · wzstats clone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'JetBrains Mono', monospace; background: #0a0c0d; color: #e9e4d0; }
+    .display { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.04em; }
+    .tag-tactical { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: #8a8676; font-weight: 700; }
+
+    /* === Card de arma (lista) === */
+    .loadout-container { background: #14171a; border: 1px solid #2a2f36; margin-bottom: 6px; transition: all 0.15s; }
+    .loadout-container.opened { border-color: #d97706; }
+    .loadout-content { display: grid; grid-template-columns: 110px 1fr 24px; gap: 16px; padding: 12px 16px; align-items: center; cursor: pointer; }
+    .loadout-content-image { width: 110px; height: 60px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0a0c0d, #1c2024); }
+    .loadout-content-image img { max-height: 56px; max-width: 100px; object-fit: contain; }
+    .loadout-content-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 0.03em; }
+    .loadout-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+    .loadout-tag {
+      padding: 3px 9px; font-size: 11px; font-weight: 700;
+      background: #2a2f36; color: #b8b3a0; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .loadout-tag.category-position.first-place { background: #d97706; color: #0a0c0d; }
+    .loadout-tag.category-position .rank { font-family: 'Bebas Neue', sans-serif; }
+    .loadout-tag-type { background: transparent; color: #8a8676; padding-left: 2px; }
+    .loadout-tag.pick-rate { background: rgba(56,189,248,0.1); color: #38bdf8; }
+    .loadout-tag.classes { background: rgba(139,149,52,0.15); color: #8b9534; }
+    .tier-pill { font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 0.1em; padding: 0 6px; }
+    .tier-META { background: rgba(251,191,36,0.2); color: #fbbf24; }
+    .tier-A { background: rgba(212,212,170,0.15); color: #d4d4aa; }
+    .tier-B { background: rgba(139,149,52,0.15); color: #8b9534; }
+    .tier-C { background: rgba(107,114,128,0.2); color: #9ca3af; }
+    .tier-D { background: rgba(185,28,28,0.15); color: #ef4444; }
+    .new-badge { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid #38bdf8; padding: 1px 6px; font-size: 10px; font-weight: 700; }
+    .origin-badge { background: rgba(139,149,52,0.15); color: #b8c241; border: 1px solid rgba(139,149,52,0.4); padding: 1px 6px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; }
+
+    .loadout-action { display: flex; justify-content: center; color: #8a8676; }
+    .loadout-container.opened .loadout-action i.fa-chevron-down { display: none; }
+    .loadout-container:not(.opened) .loadout-action i.fa-chevron-up { display: none; }
+
+    /* === Playstyles (cards expandidas) === */
+    .playstyle-scroll-container { overflow-x: auto; padding: 0 4px 8px 4px; }
+    .playstyle-scroll-content { display: flex; gap: 12px; min-width: max-content; }
+    .playstyle-group { flex: 0 0 320px; opacity: 0.5; transition: opacity 0.2s; }
+    .playstyle-group.active { opacity: 1; }
+    .playstyle-card { background: #14171a; border: 1px solid #2a2f36; padding: 14px; height: 100%; }
+    .playstyle-title {
+      font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.12em;
+      font-size: 14px; padding-bottom: 8px; margin-bottom: 12px;
+      display: flex; align-items: center; gap: 6px;
+      border-bottom: 1px solid; color: #fbbf24;
+    }
+    .playstyle-card.recommended .playstyle-title { color: #fbbf24; border-bottom-color: #fbbf24; }
+    .playstyle-card.low-recoil .playstyle-title { color: #65a30d; border-bottom-color: #65a30d; }
+    .playstyle-card.high-velocity .playstyle-title { color: #ef4444; border-bottom-color: #ef4444; }
+    .playstyle-card.prestige .playstyle-title { color: #a855f7; border-bottom-color: #a855f7; }
+    .playstyle-card.conversion .playstyle-title { color: #38bdf8; border-bottom-color: #38bdf8; }
+    .playstyle-card.versatile .playstyle-title { color: #d97706; border-bottom-color: #d97706; }
+    .playstyle-card.long-range .playstyle-title { color: #f87171; border-bottom-color: #f87171; }
+    .playstyle-card.short-range .playstyle-title { color: #60a5fa; border-bottom-color: #60a5fa; }
+    .playstyle-card.low-level .playstyle-title { color: #8b9534; border-bottom-color: #8b9534; }
+    .playstyle-card.ranked .playstyle-title { color: #a855f7; border-bottom-color: #a855f7; }
+
+    .attachment-row { padding: 8px 0; border-bottom: 1px solid #1f2429; }
+    .attachment-row:last-child { border-bottom: none; }
+    .attachment-name { font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; line-height: 1.25; }
+    .slot-level-container { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .slot-name { background: rgba(56,189,248,0.15); color: #38bdf8; padding: 1px 6px; font-size: 10px; border: 1px solid rgba(56,189,248,0.4); }
+    .level-tag { background: #2a2f36; color: #b8b3a0; padding: 1px 6px; font-size: 10px; display: inline-flex; gap: 4px; align-items: center; }
+    .level-tag.unlock-battlepass { background: rgba(217,119,6,0.15); color: #d97706; border: 1px solid rgba(217,119,6,0.4); }
+    .level-tag.unlock-prestige { background: rgba(168,85,247,0.15); color: #a855f7; border: 1px solid rgba(168,85,247,0.4); }
+    .level-tag.unlock-weekly { background: rgba(56,189,248,0.15); color: #38bdf8; border: 1px solid rgba(56,189,248,0.4); }
+    .not-unlocked-indicator { color: #8a8676; font-size: 10px; }
+    .optic-swap-indicator { color: #8a8676; font-size: 10px; margin-left: auto; }
+
+    .weapon-build-code-container { margin-top: 10px; }
+    .weapon-build-code-box {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; background: #0a0c0d; border: 1px solid #2a2f36;
+    }
+    .weapon-build-code-label { font-family: 'Bebas Neue', sans-serif; font-size: 11px; color: #8a8676; letter-spacing: 0.15em; }
+    .weapon-build-code { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .weapon-build-code-copy-icon { cursor: pointer; color: #8a8676; }
+    .weapon-build-code-copy-icon:hover { color: #d97706; }
+
+    /* === Filtros === */
+    input { background: #14171a; border: 1px solid #2a2f36; padding: 8px 12px; color: #e9e4d0; }
+    input:focus { outline: none; border-color: #8b9534; }
+    .filter-pill { padding: 4px 10px; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; cursor: pointer; transition: all 0.15s; background: #14171a; color: #8a8676; border: 1px solid #2a2f36; }
+    .filter-pill.active { background: #d97706; color: #0a0c0d; border-color: #d97706; }
+    .filter-pill:hover:not(.active) { border-color: #d4d4aa; color: #e9e4d0; }
+
+    .updated-at-text { display: flex; align-items: center; gap: 6px; color: #8a8676; font-size: 11px; margin-top: 12px; }
+    .check-icon { color: #65a30d; }
+    .highlight-date { color: #d97706; }
+  </style>
+</head>
+<body class="min-h-screen p-6">
+  <div class="mx-auto max-w-6xl">
+    <header class="mb-6 border-b border-zinc-700 pb-3 flex items-end justify-between">
+      <div>
+        <div id="catalog-tag" class="tag-tactical flex items-center gap-2"><span class="inline-block h-2 w-2 rounded-full bg-[#8b9534]"></span>CATÁLOGO</div>
+        <h1 id="catalog-title" class="display text-5xl mt-1 uppercase">Armas</h1>
+      </div>
+      <div id="meta" class="text-right text-xs text-zinc-500"></div>
+    </header>
+
+    <div class="mb-3 flex flex-wrap items-center gap-2">
+      <span class="tag-tactical">Juego</span>
+      <div id="game-filters" class="flex flex-wrap gap-1"></div>
+    </div>
+
+    <div id="origin-row" class="mb-3 flex flex-wrap items-center gap-2 hidden">
+      <span class="tag-tactical">Origen</span>
+      <div id="origin-filters" class="flex flex-wrap gap-1"></div>
+    </div>
+
+    <div class="mb-4 flex flex-wrap items-center gap-2">
+      <input id="search" placeholder="Buscar arma..." class="w-56" />
+      <div id="type-filters" class="flex flex-wrap gap-1"></div>
+      <span class="ml-auto text-xs text-zinc-500"><span id="visible-count">—</span> / <span id="total-count">—</span></span>
+    </div>
+
+    <ul id="cards" class="list-none p-0 m-0"></ul>
+  </div>
+
+<script>
+let DATA = null;
+let openIds = new Set();
+let activeType = null;
+let activeOrigin = null; // juego de origen de la weapon (mw2/mw3/bo6/bo7)
+let search = '';
+
+const ORIGIN_LABEL = { bo7: 'BO7', bo6: 'BO6', mw3: 'MW3', mw2: 'MW2' };
+
+const TYPE_ES = {
+  ASSAULT_RIFLE: 'Fusil de asalto',
+  SUBMACHINE_GUN: 'Subfusil', SMG: 'Subfusil',
+  SHOTGUN: 'Escopeta',
+  SNIPER_RIFLE: 'Francotirador', SNIPER: 'Francotirador',
+  MARKSMAN_RIFLE: 'Fusil tirador',
+  LMG: 'Ametralladora ligera', LIGHT_MACHINE_GUN: 'Ametralladora ligera',
+  PISTOL: 'Pistola', HANDGUN: 'Pistola',
+  BATTLE_RIFLE: 'Fusil de batalla',
+  MELEE: 'Cuerpo a cuerpo', LAUNCHER: 'Lanzacohetes',
+};
+
+const SLOT_ES = {
+  optic: 'Mira', barrel: 'Cañón', muzzle: 'Bocacha',
+  underbarrel: 'Acople',
+  magazine: 'Cargador', rearGrip: 'Empuñadura Trasera', stock: 'Culata',
+  stockPad: 'Culata', laser: 'Láser', ammunition: 'Munición',
+  firemods: 'Mods de Disparo', trigger: 'Disparador',
+};
+
+// Mapeo de playstyles del API → label en ES + clase CSS
+const PLAYSTYLE = {
+  LONG_RANGE:           { label: 'Largo Alcance',           cls: 'long-range' },
+  SHORT_RANGE:          { label: 'Corto Alcance',           cls: 'short-range' },
+  LOW_RECOIL:           { label: 'Bajo Retroceso',          cls: 'low-recoil' },
+  HIGH_BULLET_VELOCITY: { label: 'Alta Velocidad de Bala',  cls: 'high-velocity' },
+  HIP_FIRE:             { label: 'Disparo de Cadera',       cls: 'hipfire' },
+  TAC_STANCE:           { label: 'Postura Táctica',         cls: 'tac-stance' },
+  CONVERSION_KIT:       { label: 'Kit de Conversión',       cls: 'conversion' },
+  MOBILITY:             { label: 'Movilidad',               cls: 'mobility' },
+  ADS_SPEED:            { label: 'Velocidad ADS',           cls: 'ads' },
+  SNIPER_SUPPORT:       { label: 'Soporte Francotirador',   cls: 'sniper-support' },
+  AKIMBO:               { label: 'Akimbo',                  cls: 'akimbo' },
+  SUPPRESSED:           { label: 'Silenciado',              cls: 'suppressed' },
+  QUICK_SCOPE:          { label: 'Quick Scope',             cls: 'quick-scope' },
+  BATTLE_ROYALE:        { label: 'Battle Royale',           cls: 'br' },
+  RESURGENCE:           { label: 'Resurgence',              cls: 'resurgence' },
+  RANKED:               { label: 'Ranked',                  cls: 'ranked' },
+  VERSATILE:            { label: 'Versátil',                cls: 'versatile' },
+  PRESTIGE:             { label: 'Prestigio',               cls: 'prestige' },
+  FULL_AUTO:            { label: 'Full Auto',               cls: 'full-auto' },
+  SEMI_AUTO:            { label: 'Semi Auto',               cls: 'semi-auto' },
+  RAPID_FIRE:           { label: 'Cadencia Alta',           cls: 'rapid' },
+  BURST:                { label: 'Ráfaga',                  cls: 'burst' },
+  EIGHT_ATTACHMENTS:    { label: '8 Accesorios',            cls: 'eight-att' },
+  FIVE_ATTACHMENTS:     { label: '5 Accesorios',            cls: 'five-att' },
+  IRON_SIGHTS:          { label: 'Mira de Hierro',          cls: 'iron' },
+  WITH_OPTIC:           { label: 'Con Óptica',              cls: 'optic' },
+  LOW_LEVEL:            { label: 'Bajo Nivel',              cls: 'low-level' },
+  AGGRESSIVE:           { label: 'Agresivo',                cls: 'aggressive' },
+  BUILD:                { label: 'Build',                   cls: 'build' },
+  FIRERATE:             { label: 'Cadencia',                cls: 'rapid' },
+};
+
+// El "RECOMENDADO" oficial = build con cualquiera de estas flags
+function isRecommendedBuild(b) {
+  if (!b) return false;
+  if (b.isBestBuild || b.isBO7BestBuild || b.isBO6BestBuild || b.bestBuildForStats) return true;
+  if (b.prosCons && /"is(BO[67])?BestBuild":true/.test(b.prosCons)) return true;
+  return false;
+}
+
+// Dumps disponibles (descubiertos del servidor)
+const GAMES = [
+  { key: 'warzone/warzone-es',     label: 'Warzone',     game: 'warzone', tag: 'WARZONE'        },
+  { key: 'bo7/multiplayer-es',     label: 'BO7 MP',      game: 'bo7',     tag: 'BO7 MULTIPLAYER'},
+  { key: 'bo7/ranked-es',          label: 'BO7 Ranked',  game: 'bo7',     tag: 'BO7 RANKED'     },
+  { key: 'bo6/multiplayer-es',     label: 'BO6 MP',      game: 'bo6',     tag: 'BO6 MULTIPLAYER'},
+  { key: 'bo6/ranked-es',          label: 'BO6 Ranked',  game: 'bo6',     tag: 'BO6 RANKED'     },
+];
+let activeGame = GAMES[0].key;
+
+function tEs(map, key) { return map[key] ?? String(key || '').replace(/_/g, ' ').replace(/-/g, ' '); }
+
+let WEAPON_ORDER = null;
+
+async function load() {
+  const game = GAMES.find(g => g.key === activeGame) || GAMES[0];
+  const r = await fetch(`dumps/${game.key}.json`).then(r => r.json());
+  DATA = r;
+  const ts = r.meta?.generatedAt || r.generatedAt;
+  const count = r.counts?.weapons || r.count;
+  document.getElementById('catalog-tag').innerHTML = `<span class="inline-block h-2 w-2 rounded-full bg-[#8b9534]"></span>CATÁLOGO ${game.tag}`;
+  document.getElementById('catalog-title').textContent = `${game.label} · Armas`;
+  document.getElementById('meta').innerHTML = `
+    <div class="tag-tactical">${ts ? new Date(ts).toLocaleDateString('es-CL') : ''}</div>
+    <div class="display text-2xl text-[#d97706]">${count} armas</div>
+  `;
+  document.getElementById('total-count').textContent = count;
+  activeType = null;
+  activeOrigin = null;
+  buildGameFilters();
+  buildOriginFilters();
+  buildTypeFilters();
+  renderCards();
+}
+
+function buildOriginFilters() {
+  const origins = [...new Set(DATA.weapons.map(w => w.game))].filter(Boolean).sort();
+  const row = document.getElementById('origin-row');
+  if (origins.length <= 1) { row.classList.add('hidden'); return; }
+  row.classList.remove('hidden');
+  document.getElementById('origin-filters').innerHTML = `
+    <button class="filter-pill ${activeOrigin === null ? 'active' : ''}" onclick="setOrigin(null)">Todos</button>
+    ${origins.map(o => `<button class="filter-pill ${activeOrigin === o ? 'active' : ''}" onclick="setOrigin('${o}')">${ORIGIN_LABEL[o] || o.toUpperCase()}</button>`).join('')}
+  `;
+}
+function setOrigin(o) { activeOrigin = o; buildOriginFilters(); buildTypeFilters(); renderCards(); }
+
+function buildGameFilters() {
+  document.getElementById('game-filters').innerHTML = GAMES.map(g =>
+    `<button class="filter-pill ${activeGame === g.key ? 'active' : ''}" onclick="setGame('${g.key}')">${g.label}</button>`
+  ).join('');
+}
+function setGame(k) { activeGame = k; openIds.clear(); load(); }
+
+function buildTypeFilters() {
+  const pool = activeOrigin ? DATA.weapons.filter(w => w.game === activeOrigin) : DATA.weapons;
+  const types = [...new Set(pool.map(w => w.type))].filter(Boolean).sort();
+  document.getElementById('type-filters').innerHTML = `
+    <button class="filter-pill ${activeType === null ? 'active' : ''}" onclick="setType(null)">Todos</button>
+    ${types.map(t => `<button class="filter-pill ${activeType === t ? 'active' : ''}" onclick="setType('${t}')">${tEs(TYPE_ES, t)}</button>`).join('')}
+  `;
+}
+function setType(t) { activeType = t; buildTypeFilters(); renderCards(); }
+document.getElementById('search').addEventListener('input', (e) => { search = e.target.value.toLowerCase(); renderCards(); });
+
+function tierOrder(t) { return ['META','A','B','C','D'].indexOf(t ?? 'D'); }
+
+function findAttachmentDetail(weapon, attachmentIdOrName) {
+  if (!attachmentIdOrName) return null;
+  const atts = weapon.details?.attachments || [];
+  // Try by attachmentId con sufijo
+  const lc = attachmentIdOrName.toLowerCase();
+  let m = atts.find(a => (a.attachmentId || '').toLowerCase() === lc);
+  if (m) return m;
+  // Por sufijo (build trae mini-reflex-03, attachments tiene mk78-mini-reflex-03)
+  m = atts.find(a => (a.attachmentId || '').toLowerCase().endsWith(lc));
+  if (m) return m;
+  // Fallback: por name si lo tenemos
+  return null;
+}
+
+function levelTagHtml(att, weapon) {
+  // att = el sub-obj del build (tiene attachmentId, slot, name)
+  // weapon = la arma completa para cross-lookup
+  const detail = findAttachmentDetail(weapon, att.attachmentId);
+  // Indicadores
+  const isBattlePass = detail?.unlockedByBattlePass || (detail?.lockedByDefault && !detail?.isPrestigeAttachment && !detail?.isConversionKitAttachment);
+  const isPrestige = detail?.isPrestigeAttachment;
+  const isConversion = detail?.isConversionKitAttachment;
+  const lvl = detail?.unlockLevel;
+
+  let tagHtml = '';
+  if (isPrestige) {
+    tagHtml = `<div class="level-tag unlock-prestige"><i class="fas fa-gem"></i>Prestigio</div>`;
+  } else if (isBattlePass) {
+    tagHtml = `<div class="level-tag unlock-battlepass"><i class="fas fa-swords"></i>Pase de Batalla</div>`;
+  } else if (isConversion) {
+    tagHtml = `<div class="level-tag unlock-weekly"><i class="fas fa-star"></i>Kit de conversión</div>`;
+  } else if (lvl) {
+    tagHtml = `<div class="level-tag">Nivel ${lvl}</div>`;
+  } else {
+    tagHtml = `<div class="level-tag">—</div>`;
+  }
+  const showUnlock = isBattlePass || isPrestige || isConversion;
+  return { tagHtml, showUnlock };
+}
+
+function renderPlaystyle(w, build, isRecommended) {
+  const ps = PLAYSTYLE[build.playstyle] ?? { label: tEs({}, build.playstyle), cls: '' };
+  const label = isRecommended ? 'Recomendado' : ps.label;
+  const cls = isRecommended ? 'recommended' : ps.cls;
+  const crown = isRecommended;
+
+  const slots = ['optic','muzzle','barrel','underbarrel','magazine','rearGrip','stock','stockPad','laser','firemods','ammunition'];
+  const items = slots.map(s => build[s] ? { slot: s, ...build[s] } : null).filter(Boolean);
+
+  const code = `L01-${(build.id || '').slice(-12).toUpperCase().replace(/-/g, '').match(/.{1,5}/g)?.join('-') || 'XXXX'}-${build.attachmentCount || 0}`;
+
+  return `
+    <div class="playstyle-group ${crown ? 'active' : ''}">
+      <div class="playstyle-card ${cls}">
+        <div class="playstyle-title">
+          ${crown ? '<i class="fas fa-crown"></i>' : ''}
+          <span>${label}</span>
+        </div>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          ${items.map(att => {
+            const { tagHtml, showUnlock } = levelTagHtml(att, w);
+            const slotLabel = SLOT_ES[att.slot] || att.slot;
+            const isOpticSwap = att.slot === 'optic' && (att.attachmentId || '').includes('reflex');
+            return `
+              <li class="attachment-row">
+                <div class="attachment-name">${att.name || att.attachmentName || '?'}</div>
+                <div class="slot-level-container">
+                  <span class="slot-name">${slotLabel}</span>
+                  ${tagHtml}
+                  ${showUnlock ? '<span class="not-unlocked-indicator"><i class="far fa-circle-info"></i> ¿No desbloqueado?</span>' : ''}
+                  ${isOpticSwap ? '<span class="optic-swap-indicator"><i class="far fa-arrow-right-arrow-left"></i> Óptica</span>' : ''}
+                </div>
+              </li>
+            `;
+          }).join('') || '<li class="text-xs text-zinc-600 py-2">Sin accesorios.</li>'}
+        </ul>
+        <div class="weapon-build-code-container">
+          <div class="weapon-build-code-box">
+            <span class="weapon-build-code-label">Código</span>
+            <span class="weapon-build-code">${code}</span>
+            <i class="weapon-build-code-copy-icon far fa-copy" onclick="navigator.clipboard.writeText('${code}'); this.classList.replace('fa-copy','fa-check'); setTimeout(()=>this.classList.replace('fa-check','fa-copy'),1000)"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCard(w) {
+  const open = openIds.has(w.id);
+  const img = `https://img.wzstats.gg/${w.id}_version${w.imageVersion || 4}/gunDisplayLoadouts`;
+  const tier = w.tier || 'D';
+  const badges = (w.badges || [])
+    .map(b => `<div class="loadout-tag category-position ${b.rank === 1 ? 'first-place' : ''}"><span class="rank">#${b.rank}</span>${b.category}</div>`)
+    .join('');
+  // Preferimos el label del DOM scrape (en español, exacto como wzstats), fallback a mapeo
+  const typeLabel = w.displayTypeLabel || tEs(TYPE_ES, w.type);
+  const buildsCount = (w.builds || []).length;
+
+  // Builds ordenados: Recomendado primero, luego por playstyle visible en wzstats
+  const orderPS = ['LONG_RANGE','SHORT_RANGE','LOW_RECOIL','HIGH_BULLET_VELOCITY','HIP_FIRE','TAC_STANCE','CONVERSION_KIT','MOBILITY','ADS_SPEED','SNIPER_SUPPORT','AKIMBO','SUPPRESSED','RESURGENCE','BATTLE_ROYALE','VERSATILE','PRESTIGE','RANKED','EIGHT_ATTACHMENTS','FIVE_ATTACHMENTS','LOW_LEVEL'];
+  const allBuilds = w.builds || [];
+  const recommended = allBuilds.find(isRecommendedBuild) || null;
+  const rest = allBuilds.filter(b => b !== recommended).sort((a, b) => {
+    const ia = orderPS.indexOf(a.playstyle); const ib = orderPS.indexOf(b.playstyle);
+    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+  });
+  const builds = recommended ? [recommended, ...rest] : rest;
+
+  return `
+    <li>
+      <div class="loadout-container ${open ? 'opened' : ''}">
+        <div class="loadout-content" onclick="toggle('${w.id}')">
+          <div class="loadout-content-image">
+            <img src="${img}" alt="${w.name}" onerror="this.style.display='none'" />
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="loadout-content-name">${w.name}</h3>
+              ${w.game ? `<span class="origin-badge">${ORIGIN_LABEL[w.game] || w.game.toUpperCase()}</span>` : ''}
+              ${w.isNew ? '<span class="new-badge"><i class="fas fa-star"></i> NEW</span>' : ''}
+              <span class="tier-pill tier-${tier}">${tier === 'META' ? 'META' : tier + ' TIER'}</span>
+            </div>
+            <div class="loadout-tags">
+              ${badges}
+              <span class="loadout-tag loadout-tag-type">${typeLabel}</span>
+              ${w.pickRate ? `<span class="loadout-tag pick-rate">${w.pickRate}</span>` : ''}
+              ${w.classes ? `<span class="loadout-tag classes">${w.classes} Clases</span>` : (buildsCount ? `<span class="loadout-tag classes">${buildsCount} Clases</span>` : '')}
+            </div>
+          </div>
+          <div class="loadout-action">
+            <i class="far fa-chevron-up"></i>
+            <i class="far fa-chevron-down"></i>
+          </div>
+        </div>
+        ${open ? `
+          <div style="padding: 4px 16px 16px;">
+            <div class="playstyle-scroll-container">
+              <div class="playstyle-scroll-content">
+                ${builds.length ? builds.map(b => renderPlaystyle(w, b, b === recommended)).join('') : '<div class="text-xs text-zinc-500 p-4">Sin builds curados.</div>'}
+              </div>
+            </div>
+            <div class="updated-at-text">
+              <i class="far fa-check check-icon"></i>
+              Actualizado · <span class="highlight-date">${new Date(DATA.generatedAt).toLocaleDateString('es-CL')}</span>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    </li>
+  `;
+}
+
+function toggle(id) {
+  if (openIds.has(id)) openIds.delete(id);
+  else openIds.add(id);
+  renderCards();
+}
+
+function renderCards() {
+  const filtered = DATA.weapons
+    .filter(w => {
+      if (activeOrigin && w.game !== activeOrigin) return false;
+      if (activeType && w.type !== activeType) return false;
+      if (search && !w.id.includes(search) && !w.name.toLowerCase().includes(search)) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      // Si tenemos `position` del DOM scrape, usamos ese orden (es el oficial de wzstats)
+      const pa = a.position ?? 9999;
+      const pb = b.position ?? 9999;
+      if (pa !== pb) return pa - pb;
+      const ti = tierOrder(a.tier) - tierOrder(b.tier);
+      if (ti !== 0) return ti;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  document.getElementById('visible-count').textContent = filtered.length;
+  document.getElementById('cards').innerHTML = filtered.map(renderCard).join('');
+}
+
+load();
+</script>
+</body>
+</html>

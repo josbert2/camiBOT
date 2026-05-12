@@ -8,6 +8,7 @@ import {
   ShieldUserIcon,
   Logout03Icon,
   Login03Icon,
+  GunIcon,
 } from '@hugeicons/core-free-icons';
 import { auth, signOut } from '@/auth';
 import { isAdmin } from '@/lib/admin';
@@ -27,6 +28,9 @@ export async function Nav() {
           <NavLink href="/players" icon={RankingIcon}>
             Ranking
           </NavLink>
+          <NavLink href="/wz" icon={GunIcon} external>
+            WZ Meta
+          </NavLink>
           <NavLink href="/comandos" icon={TerminalIcon}>
             Ops
           </NavLink>
@@ -45,6 +49,7 @@ export async function Nav() {
         <div className="flex items-center gap-2">
           <div className="flex gap-1 md:hidden">
             <NavLink href="/players" icon={RankingIcon} small />
+            <NavLink href="/wz" icon={GunIcon} small external />
             <NavLink href="/comandos" icon={TerminalIcon} small />
           </div>
 
@@ -78,31 +83,44 @@ function NavLink({
   children,
   highlight = false,
   small = false,
+  external = false,
 }: {
   href: string;
   icon: typeof TargetIcon;
   children?: React.ReactNode;
   highlight?: boolean;
   small?: boolean;
+  external?: boolean;
 }) {
-  return (
-    <Link
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      href={href as any}
-      className={`flex items-center gap-2 border-2 ${
-        highlight
-          ? 'border-primary text-primary'
-          : 'border-transparent text-muted-foreground'
-      } ${small ? 'px-2 py-1' : 'px-3 py-1.5'} font-bold uppercase transition hover:border-border-strong hover:text-foreground`}
-    >
+  const className = `flex items-center gap-2 border-2 ${
+    highlight
+      ? 'border-primary text-primary'
+      : 'border-transparent text-muted-foreground'
+  } ${small ? 'px-2 py-1' : 'px-3 py-1.5'} font-bold uppercase transition hover:border-border-strong hover:text-foreground`;
+
+  const content = (
+    <>
       <HugeiconsIcon icon={icon} className={small ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
       {children && (
-        <span
-          className={`display ${small ? 'text-[10px]' : 'text-xs'} tracking-widest`}
-        >
+        <span className={`display ${small ? 'text-[10px]' : 'text-xs'} tracking-widest`}>
           {children}
         </span>
       )}
+    </>
+  );
+
+  if (external) {
+    return (
+      <a href={href} className={className}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    <Link href={href as any} className={className}>
+      {content}
     </Link>
   );
 }

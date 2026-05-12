@@ -11,6 +11,11 @@ const config: NextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  async rewrites() {
+    return [
+      { source: '/wz', destination: '/wz/index.html' },
+    ];
+  },
 };
 
 export default config;
