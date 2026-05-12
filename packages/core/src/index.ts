@@ -17,5 +17,14 @@ export {
   generateDoubleElim,
   applyDoubleElimResult,
 } from './brackets/double-elim';
+export {
+  generateSwissRoundOne,
+  generateNextSwissRound,
+  computeSwissStandings,
+  defaultSwissRounds,
+  type SwissParticipant,
+  type SwissStanding,
+  type CompletedSwissMatch,
+} from './brackets/swiss';
 export { renderBracketText, type RenderOptions } from './brackets/render';
 export { standardSeeding, nextPowerOfTwo } from './brackets/seeding';

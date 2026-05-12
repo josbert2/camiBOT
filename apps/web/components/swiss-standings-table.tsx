@@ -1,4 +1,4 @@
-import { computeStandings } from '@camibot/core';
+import { computeSwissStandings } from '@camibot/core';
 
 interface Participant {
   id: string;
@@ -19,11 +19,8 @@ interface Props {
   champion?: string | null;
 }
 
-/**
- * Tabla de posiciones para torneos round-robin. Calcula puntos a partir de
- * los matches COMPLETED con winnerId.
- */
-export function StandingsTable({ participants, matches, champion }: Props) {
+/** Tabla Suiza con desempate por Buchholz. */
+export function SwissStandingsTable({ participants, matches, champion }: Props) {
   const completed = matches
     .filter(
       (m) =>
@@ -38,7 +35,7 @@ export function StandingsTable({ participants, matches, champion }: Props) {
       winnerId: m.winnerId!,
     }));
 
-  const standings = computeStandings(
+  const standings = computeSwissStandings(
     participants.map((p) => p.id),
     completed,
   );
@@ -46,16 +43,17 @@ export function StandingsTable({ participants, matches, champion }: Props) {
   const byId = new Map(participants.map((p) => [p.id, p]));
 
   return (
-    <div className="overflow-x-auto border-2 border-border">
+    <div className="overflow-x-auto border border-border bg-card">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b-2 border-border bg-muted text-[10px] uppercase tracking-widest text-muted-foreground">
-            <th className="px-3 py-2 text-left">#</th>
-            <th className="px-3 py-2 text-left">Participante</th>
-            <th className="px-3 py-2 text-right tabular-nums">PJ</th>
-            <th className="px-3 py-2 text-right tabular-nums">W</th>
-            <th className="px-3 py-2 text-right tabular-nums">L</th>
-            <th className="px-3 py-2 text-right tabular-nums">Pts</th>
+          <tr className="border-b border-border bg-muted">
+            <th className="px-3 py-2 text-left tag-tactical">#</th>
+            <th className="px-3 py-2 text-left tag-tactical">Operador</th>
+            <th className="px-3 py-2 text-right tag-tactical">PJ</th>
+            <th className="px-3 py-2 text-right tag-tactical">W</th>
+            <th className="px-3 py-2 text-right tag-tactical">L</th>
+            <th className="px-3 py-2 text-right tag-tactical">Buch.</th>
+            <th className="px-3 py-2 text-right tag-tactical">Pts</th>
           </tr>
         </thead>
         <tbody>
@@ -70,12 +68,10 @@ export function StandingsTable({ participants, matches, champion }: Props) {
                   isChampion ? 'bg-primary/10' : ''
                 }`}
               >
-                <td className="px-3 py-2 display tabular-nums">
-                  {isChampion ? '#1' : i + 1}
-                </td>
+                <td className="px-3 py-2 display tabular-nums">{i + 1}</td>
                 <td className="px-3 py-2">
                   <div className="font-bold">{participant.name}</div>
-                  {participant.seed && (
+                  {participant.seed !== null && (
                     <div className="text-[10px] uppercase text-muted-foreground">
                       seed {participant.seed}
                     </div>
@@ -88,7 +84,10 @@ export function StandingsTable({ participants, matches, champion }: Props) {
                 <td className="px-3 py-2 text-right tabular-nums text-danger">
                   {s.losses}
                 </td>
-                <td className="px-3 py-2 text-right text-lg font-bold tabular-nums">
+                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                  {s.buchholz}
+                </td>
+                <td className="display px-3 py-2 text-right text-xl tabular-nums text-primary">
                   {s.points}
                 </td>
               </tr>

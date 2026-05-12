@@ -2,7 +2,12 @@
 // Compartido entre /match report (user real) y /dev simulate (admin).
 
 import { prisma, type Match, type TournamentFormat } from '@camibot/db';
-import { computeStandings } from '@camibot/core';
+import {
+  computeStandings,
+  computeSwissStandings,
+  defaultSwissRounds,
+  generateNextSwissRound,
+} from '@camibot/core';
 import { logger } from './logger.js';
 import { updateLeaderboardForCompletedTournament } from './leaderboard.js';
 import { announceTournamentCompletion } from './announce.js';
@@ -158,6 +163,126 @@ export async function applyMatchResult(
           });
         }
         result.tournamentDone = true;
+      }
+    } else if (fmt === 'SWISS') {
+      // En Suizo no se elimina. Verificamos si terminó la ronda actual.
+      const currentRound = match.round;
+      const roundIncomplete = await tx.match.count({
+        where: {
+          tournamentId: tournament.id,
+          round: currentRound,
+          status: { in: ['PENDING', 'READY', 'IN_PROGRESS'] },
+        },
+      });
+      if (roundIncomplete === 0) {
+        // Ronda terminada. ¿Cuántas en total?
+        const participants = await tx.participant.findMany({
+          where: { tournamentId: tournament.id },
+        });
+        const maxRounds = defaultSwissRounds(participants.length);
+
+        if (currentRound >= maxRounds) {
+          // Fin del torneo — calcular standings finales
+          const allMatches = await tx.match.findMany({
+            where: { tournamentId: tournament.id, status: 'COMPLETED' },
+            select: { participant1Id: true, participant2Id: true, winnerId: true },
+          });
+          const standings = computeSwissStandings(
+            participants.map((p) => p.id),
+            allMatches
+              .filter((m) => m.participant1Id && m.participant2Id && m.winnerId)
+              .map((m) => ({
+                participant1Id: m.participant1Id!,
+                participant2Id: m.participant2Id!,
+                winnerId: m.winnerId!,
+              })),
+          );
+          for (let i = 0; i < standings.length; i++) {
+            await tx.participant.update({
+              where: { id: standings[i]!.participantId },
+              data: {
+                finalRank: i + 1,
+                status: i === 0 ? 'WINNER' : 'ELIMINATED',
+              },
+            });
+          }
+          await tx.tournament.update({
+            where: { id: tournament.id },
+            data: { status: 'COMPLETED', endedAt: new Date() },
+          });
+          result.tournamentDone = true;
+          const champion = standings[0];
+          if (champion) result.extraNote = ` Campeón con ${champion.points} pts (Buchholz ${champion.buchholz}).`;
+        } else {
+          // Generar siguiente ronda
+          const completedMatches = await tx.match.findMany({
+            where: { tournamentId: tournament.id, status: 'COMPLETED' },
+            select: { participant1Id: true, participant2Id: true, winnerId: true, round: true },
+          });
+
+          // Calcular puntos y opponents por participant
+          const pointsMap = new Map<string, number>();
+          const opponentsMap = new Map<string, string[]>();
+          const byeMap = new Map<string, boolean>();
+          for (const p of participants) {
+            pointsMap.set(p.id, 0);
+            opponentsMap.set(p.id, []);
+            byeMap.set(p.id, false);
+          }
+          for (const cm of completedMatches) {
+            if (!cm.winnerId) continue;
+            pointsMap.set(cm.winnerId, (pointsMap.get(cm.winnerId) ?? 0) + 3);
+            if (cm.participant1Id && cm.participant2Id) {
+              opponentsMap.get(cm.participant1Id)!.push(cm.participant2Id);
+              opponentsMap.get(cm.participant2Id)!.push(cm.participant1Id);
+            } else if (cm.participant1Id && !cm.participant2Id) {
+              byeMap.set(cm.participant1Id, true);
+            }
+          }
+
+          const swissParticipants = participants.map((p) => ({
+            participantId: p.id,
+            seed: p.seed ?? 0,
+            points: pointsMap.get(p.id) ?? 0,
+            opponents: opponentsMap.get(p.id) ?? [],
+            hadBye: byeMap.get(p.id) ?? false,
+          }));
+
+          const nextRoundNum = currentRound + 1;
+          const nextMatches = generateNextSwissRound(swissParticipants, nextRoundNum);
+
+          for (const nm of nextMatches) {
+            const isBye =
+              (nm.participant1Id && !nm.participant2Id) ||
+              (!nm.participant1Id && nm.participant2Id);
+            const byeWinner = isBye ? (nm.participant1Id ?? nm.participant2Id) : null;
+            await tx.match.create({
+              data: {
+                tournamentId: tournament.id,
+                round: nm.round,
+                matchNumber: nm.matchNumber,
+                bracketSide: nm.bracketSide,
+                participant1Id: nm.participant1Id,
+                participant2Id: nm.participant2Id,
+                status: isBye
+                  ? 'COMPLETED'
+                  : nm.participant1Id && nm.participant2Id
+                    ? 'READY'
+                    : 'PENDING',
+                ...(isBye && byeWinner
+                  ? { winnerId: byeWinner, scoreP1: 1, scoreP2: 0, completedAt: new Date() }
+                  : {}),
+              },
+            });
+            if (isBye && byeWinner) {
+              await tx.participant.update({
+                where: { id: byeWinner },
+                data: { wins: { increment: 1 } },
+              });
+            }
+          }
+          result.extraNote = ` Ronda ${nextRoundNum}/${maxRounds} iniciada.`;
+        }
       }
     } else if (fmt === 'ROUND_ROBIN') {
       const remaining = await tx.match.count({

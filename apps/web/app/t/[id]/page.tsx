@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { prisma } from '@camibot/db';
 import { BracketSVG } from '@/components/bracket-svg';
 import { StandingsTable } from '@/components/standings-table';
+import { SwissStandingsTable } from '@/components/swiss-standings-table';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -22,7 +23,7 @@ const FORMAT_LABELS: Record<string, string> = {
   SINGLE_ELIMINATION: 'Eliminación simple',
   DOUBLE_ELIMINATION: 'Doble eliminación',
   ROUND_ROBIN: 'Round robin',
-  SWISS: 'Suizo',
+  SWISS: 'Sistema suizo',
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -137,6 +138,29 @@ export default async function TournamentPage({ params }: PageProps) {
           name: p.user.globalName ?? p.user.username,
           seed: p.seed,
         }));
+
+        if (tournament.format === 'SWISS') {
+          const lastRound = Math.max(...tournament.matches.map((m) => m.round), 0);
+          return (
+            <section className="mb-12 space-y-6">
+              <div>
+                <div className="mb-3 text-xs uppercase tracking-[0.3em] text-muted-foreground">
+                  [tabla suiza · ronda {lastRound}]
+                </div>
+                <SwissStandingsTable
+                  participants={participants}
+                  matches={tournament.matches.map((m) => ({
+                    participant1Id: m.participant1Id,
+                    participant2Id: m.participant2Id,
+                    winnerId: m.winnerId,
+                    status: m.status,
+                  }))}
+                  champion={winner?.id ?? null}
+                />
+              </div>
+            </section>
+          );
+        }
 
         if (tournament.format === 'ROUND_ROBIN') {
           return (

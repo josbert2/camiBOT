@@ -11,6 +11,7 @@ import {
   generateSingleElim,
   generateRoundRobin,
   generateDoubleElim,
+  generateSwissRoundOne,
   renderBracketText,
 } from '@camibot/core';
 import type { BracketSeed, BracketMatch } from '@camibot/types';
@@ -48,12 +49,6 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
   if (tournament.status !== 'REGISTRATION' && tournament.status !== 'CHECK_IN') {
     await interaction.editReply({
       content: `No se puede iniciar: el torneo está en \`${tournament.status}\`.`,
-    });
-    return;
-  }
-  if (tournament.format === 'SWISS') {
-    await interaction.editReply({
-      content: 'El formato Suizo todavía no está implementado.',
     });
     return;
   }
@@ -103,6 +98,12 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
   const idMap = new Map<string, string>();
   await prisma.$transaction(async (tx) => {
     for (const bm of bracketMatches) {
+      // En Suizo (y formats con BYE): si solo hay 1 participante, gana automático
+      const isBye =
+        (bm.participant1Id && !bm.participant2Id) ||
+        (!bm.participant1Id && bm.participant2Id);
+      const winnerId = isBye ? (bm.participant1Id ?? bm.participant2Id) : null;
+
       const created = await tx.match.create({
         data: {
           tournamentId: tournament.id,
@@ -111,10 +112,21 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
           bracketSide: bm.bracketSide,
           participant1Id: bm.participant1Id,
           participant2Id: bm.participant2Id,
-          status: matchStatus(bm),
+          status: isBye ? 'COMPLETED' : matchStatus(bm),
+          ...(isBye && winnerId
+            ? { winnerId, scoreP1: 1, scoreP2: 0, completedAt: new Date() }
+            : {}),
         },
       });
       idMap.set(bm.id, created.id);
+
+      // Sumar win al ganador del bye
+      if (isBye && winnerId) {
+        await tx.participant.update({
+          where: { id: winnerId },
+          data: { wins: { increment: 1 } },
+        });
+      }
     }
     // Re-mapear nextMatchId y loserNextMatchId a los CUIDs reales
     for (const bm of bracketMatches) {
@@ -258,7 +270,7 @@ function generateBracket(format: TournamentFormat, seeds: BracketSeed[]): Bracke
     case 'ROUND_ROBIN':
       return generateRoundRobin({ seeds });
     case 'SWISS':
-      throw new Error('Swiss no implementado');
+      return generateSwissRoundOne(seeds);
     default: {
       const _exhaustive: never = format;
       throw new Error(`Formato desconocido: ${_exhaustive as string}`);
@@ -275,7 +287,7 @@ function formatToLabel(format: TournamentFormat): string {
     case 'ROUND_ROBIN':
       return 'round robin';
     case 'SWISS':
-      return 'suizo';
+      return 'sistema suizo';
   }
 }
 
