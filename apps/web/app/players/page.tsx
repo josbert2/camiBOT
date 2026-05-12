@@ -1,29 +1,15 @@
 import { prisma } from '@camibot/db';
 import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
-import {
-  ChampionIcon,
-  Target02Icon,
-  RankingIcon,
-} from '@hugeicons/core-free-icons';
+import { ChampionIcon, RankingIcon } from '@hugeicons/core-free-icons';
 import type { Metadata } from 'next';
+import { getRankProgress } from '@/lib/ranks';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Ranking — Tournify',
 };
-
-// Rangos militares por posición (1-5: oficiales, 6+: enlisted)
-function rankBadge(pos: number): { label: string; color: string } {
-  if (pos === 1) return { label: 'GEN', color: 'text-accent' };
-  if (pos === 2) return { label: 'COL', color: 'text-primary' };
-  if (pos === 3) return { label: 'MAJ', color: 'text-primary' };
-  if (pos <= 5) return { label: 'CPT', color: 'text-foreground' };
-  if (pos <= 10) return { label: 'LT', color: 'text-muted-foreground' };
-  if (pos <= 20) return { label: 'SGT', color: 'text-muted-foreground' };
-  return { label: 'PVT', color: 'text-muted-foreground' };
-}
 
 export default async function PlayersPage() {
   const users = await prisma.user.findMany({
@@ -113,7 +99,7 @@ export default async function PlayersPage() {
                       : r.wins === r.losses
                         ? 'text-foreground'
                         : 'text-danger';
-                const rank = rankBadge(i + 1);
+                const rank = getRankProgress(r.points).current;
                 return (
                   <tr
                     key={r.id}
@@ -125,7 +111,7 @@ export default async function PlayersPage() {
                       {String(i + 1).padStart(2, '0')}
                     </td>
                     <td className={`px-3 py-2 display text-xs ${rank.color}`}>
-                      {rank.label}
+                      {rank.short}
                     </td>
                     <td className="px-3 py-2 font-bold">
                       <Link

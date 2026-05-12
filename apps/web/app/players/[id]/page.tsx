@@ -25,6 +25,7 @@ import {
   computeHeadToHead,
   computeAchievements,
 } from '@/lib/player-stats';
+import { RankBadge } from '@/components/rank-badge';
 
 // Mapeo iconKey → HugeIcon component
 const ICON_MAP: Record<string, typeof Target02Icon> = {
@@ -278,7 +279,10 @@ export default async function PlayerPage({ params }: PageProps) {
           {user.username !== name && (
             <div className="mt-1 text-xs text-muted-foreground">@{user.username}</div>
           )}
-          <div className="mt-3 inline-block border border-border bg-muted px-2 py-1">
+          <div className="mt-3">
+            <RankBadge points={totalPoints} size="lg" withProgress />
+          </div>
+          <div className="mt-2 inline-block border border-border bg-muted px-2 py-1">
             <span className="tag-tactical">ID:</span>{' '}
             <code className="text-[10px] text-foreground">{user.discordId}</code>
           </div>
