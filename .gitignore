@@ -39,3 +39,4 @@ Thumbs.db
 apps/web/public/wz/dumps/
 tools/wzstats-scraper/logs/
 tools/wzstats-scraper/node_modules/
+*.local.md
