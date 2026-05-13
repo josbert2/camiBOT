@@ -215,7 +215,7 @@ let WEAPON_ORDER = null;
 
 async function load() {
   const game = GAMES.find(g => g.key === activeGame) || GAMES[0];
-  const r = await fetch(`dumps/${game.key}.json`).then(r => r.json());
+  const r = await fetch(`/wz/dumps/${game.key}.json`).then(r => r.json());
   DATA = r;
   const ts = r.meta?.generatedAt || r.generatedAt;
   const count = r.counts?.weapons || r.count;
