@@ -28,7 +28,7 @@ export async function Nav() {
           <NavLink href="/players" icon={RankingIcon}>
             Ranking
           </NavLink>
-          <NavLink href="/wz" icon={GunIcon} external>
+          <NavLink href="/wz" icon={GunIcon}>
             WZ Meta
           </NavLink>
           <NavLink href="/comandos" icon={TerminalIcon}>
@@ -49,7 +49,7 @@ export async function Nav() {
         <div className="flex items-center gap-2">
           <div className="flex gap-1 md:hidden">
             <NavLink href="/players" icon={RankingIcon} small />
-            <NavLink href="/wz" icon={GunIcon} small external />
+            <NavLink href="/wz" icon={GunIcon} small />
             <NavLink href="/comandos" icon={TerminalIcon} small />
           </div>
 
