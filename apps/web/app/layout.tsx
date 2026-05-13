@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { GeistMono } from 'geist/font/mono';
 import { Nav } from '@/components/nav';
 import './globals.css';
 
 const SITE_URL = process.env.AUTH_URL ?? 'https://tournify.josbert.dev';
+const UMAMI_WEBSITE_ID = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+const UMAMI_SRC = process.env.NEXT_PUBLIC_UMAMI_SRC ?? '/stats-script.js';
 const SITE_NAME = 'Tournify';
 const SITE_DESC =
   'Hostea torneos competitivos directamente en tu servidor de Discord. Single elim, doble elim, round robin, teams 2v2/3v3, leaderboards, brackets en vivo.';
@@ -98,6 +101,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground antialiased">
         <Nav />
         {children}
+        {UMAMI_WEBSITE_ID && (
+          <Script
+            async
+            defer
+            src={UMAMI_SRC}
+            data-website-id={UMAMI_WEBSITE_ID}
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );

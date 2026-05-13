@@ -263,7 +263,7 @@ export default async function WeaponPage({ params }: { params: Promise<{ weaponI
                     key={i}
                     className={`flex items-center gap-1 border px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${
                       b.rank === 1
-                        ? 'border-warning bg-warning text-warning-foreground'
+                        ? 'border-warning bg-warning text-background'
                         : 'border-border bg-muted text-muted-foreground'
                     }`}
                   >

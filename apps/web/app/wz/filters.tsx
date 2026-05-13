@@ -124,7 +124,7 @@ export function WzCatalogFilters({
                       key={i}
                       className={`inline-flex items-center gap-1 border px-1.5 py-0 text-[10px] font-bold uppercase ${
                         b.rank === 1
-                          ? 'border-warning bg-warning text-warning-foreground'
+                          ? 'border-warning bg-warning text-background'
                           : 'border-border bg-muted text-muted-foreground'
                       }`}
                     >
