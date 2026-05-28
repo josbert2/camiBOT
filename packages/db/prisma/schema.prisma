@@ -370,3 +370,35 @@ model Subscription {
 
   guilds Guild[]
 }
+
+// ============================================================
+// Clan name contest (público, sin login)
+// ============================================================
+// Vista pública en /wz/clans: la gente propone nombres de clan
+// y otros votan. Cooldown 24h por IP para registrar y para votar.
+
+model ClanName {
+  id             String   @id @default(cuid())
+  name           String   // tal como lo escribió la persona (preserva caps)
+  slug           String   @unique
+  normalizedName String   @unique // lowercase + sin acentos + sin espacios extra, para detectar duplicados
+  ipHash         String   // hash de IP que lo registró (sólo para el cooldown)
+  createdAt      DateTime @default(now())
+
+  votes ClanVote[]
+
+  @@index([ipHash, createdAt])
+  @@index([createdAt])
+}
+
+model ClanVote {
+  id          String   @id @default(cuid())
+  clanNameId  String
+  ipHash      String   @unique // 1 voto total por IP
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clanName ClanName @relation(fields: [clanNameId], references: [id], onDelete: Cascade)
+
+  @@index([clanNameId])
+}
