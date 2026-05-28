@@ -13,10 +13,11 @@ export type ClanRow = {
 
 type Props = {
   initialClans: ClanRow[];
-  initialMyVoteId: string | null;
-  initialVoteUnlockAt: string | null;
+  initialMyVoteIds: string[];
   initialRegisterUnlockAt: string | null;
 };
+
+const MAX_VOTES = 5;
 
 function formatRemaining(unlockAt: string | null): string | null {
   if (!unlockAt) return null;
@@ -31,13 +32,11 @@ function formatRemaining(unlockAt: string | null): string | null {
 
 export function ClansBoard({
   initialClans,
-  initialMyVoteId,
-  initialVoteUnlockAt,
+  initialMyVoteIds,
   initialRegisterUnlockAt,
 }: Props) {
   const [clans, setClans] = useState<ClanRow[]>(initialClans);
-  const [myVoteId, setMyVoteId] = useState<string | null>(initialMyVoteId);
-  const [voteUnlockAt, setVoteUnlockAt] = useState<string | null>(initialVoteUnlockAt);
+  const [myVoteIds, setMyVoteIds] = useState<Set<string>>(new Set(initialMyVoteIds));
   const [registerUnlockAt, setRegisterUnlockAt] = useState<string | null>(
     initialRegisterUnlockAt,
   );
@@ -48,7 +47,6 @@ export function ClansBoard({
   const [busyVoteId, setBusyVoteId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  // Forzar re-render cada 60s para que los contadores de cooldown bajen.
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
@@ -56,7 +54,7 @@ export function ClansBoard({
   }, []);
 
   const registerRemaining = formatRemaining(registerUnlockAt);
-  const voteRemaining = formatRemaining(voteUnlockAt);
+  const votesLeft = MAX_VOTES - myVoteIds.size;
 
   const sortedClans = useMemo(() => {
     return [...clans].sort((a, b) => {
@@ -88,45 +86,48 @@ export function ClansBoard({
       setClans((prev) => [...prev, json.clan as ClanRow]);
       setName('');
       setRegisterUnlockAt(new Date(Date.now() + 24 * 3600 * 1000).toISOString());
-      setInfo(`Registraste "${(json.clan as ClanRow).name}". Ahora votalo si querés.`);
+      setInfo(`Registraste "${(json.clan as ClanRow).name}". Ya podés votarlo.`);
     });
   }
 
-  async function handleVote(clanId: string) {
+  async function handleToggleVote(clanId: string) {
     setError(null);
     setInfo(null);
     setBusyVoteId(clanId);
 
+    const isVoted = myVoteIds.has(clanId);
+    const action = isVoted ? 'remove' : 'add';
+
     const res = await fetch('/api/wz/clans/vote', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ clanNameId: clanId }),
+      body: JSON.stringify({ clanNameId: clanId, action }),
     });
     const json = await res.json().catch(() => ({}));
     setBusyVoteId(null);
 
     if (!res.ok) {
       setError(json.error ?? 'No se pudo registrar el voto.');
-      if (json.unlockAt) setVoteUnlockAt(json.unlockAt as string);
+      if (Array.isArray(json.myVoteIds)) {
+        setMyVoteIds(new Set(json.myVoteIds as string[]));
+      }
       return;
     }
 
     if (json.unchanged) {
-      setInfo('Ese ya era tu voto.');
+      setInfo('Ya tenías ese voto.');
       return;
     }
 
     startTransition(() => {
       setClans((prev) =>
         prev.map((c) => {
-          if (c.id === clanId) return { ...c, votes: c.votes + 1 };
-          if (c.id === myVoteId) return { ...c, votes: Math.max(0, c.votes - 1) };
-          return c;
+          if (c.id !== clanId) return c;
+          return { ...c, votes: c.votes + (action === 'add' ? 1 : -1) };
         }),
       );
-      setMyVoteId(clanId);
-      setVoteUnlockAt(new Date(Date.now() + 24 * 3600 * 1000).toISOString());
-      setInfo(json.changed ? 'Voto cambiado.' : 'Voto registrado.');
+      setMyVoteIds(new Set(json.myVoteIds as string[]));
+      setInfo(action === 'add' ? 'Voto agregado.' : 'Voto quitado.');
     });
   }
 
@@ -169,7 +170,9 @@ export function ClansBoard({
         <div
           className={cn(
             'border-2 px-4 py-3 text-sm',
-            error ? 'border-danger/60 bg-danger/10 text-danger' : 'border-primary/60 bg-primary/10 text-primary',
+            error
+              ? 'border-danger/60 bg-danger/10 text-danger'
+              : 'border-primary/60 bg-primary/10 text-primary',
           )}
         >
           {error ?? info}
@@ -177,15 +180,16 @@ export function ClansBoard({
       )}
 
       <section>
-        <div className="mb-3 flex items-end justify-between">
+        <div className="mb-3 flex items-end justify-between gap-3">
           <h2 className="display text-lg uppercase">Ranking</h2>
-          {voteRemaining ? (
-            <span className="tag-tactical">Cambiar voto en: {voteRemaining}</span>
-          ) : myVoteId ? (
-            <span className="tag-tactical text-primary">Podés cambiar tu voto</span>
-          ) : (
-            <span className="tag-tactical">Aún no votaste</span>
-          )}
+          <span
+            className={cn(
+              'tag-tactical',
+              votesLeft === 0 ? 'text-warning' : votesLeft < MAX_VOTES ? 'text-primary' : '',
+            )}
+          >
+            Tus votos: {myVoteIds.size}/{MAX_VOTES}
+          </span>
         </div>
 
         {sortedClans.length === 0 ? (
@@ -195,8 +199,9 @@ export function ClansBoard({
         ) : (
           <ul className="space-y-2">
             {sortedClans.map((c, idx) => {
-              const isMine = c.id === myVoteId;
-              const cooldownActive = Boolean(voteRemaining) && !isMine;
+              const isMine = myVoteIds.has(c.id);
+              const atLimit = votesLeft === 0 && !isMine;
+              const busy = busyVoteId === c.id;
               return (
                 <li
                   key={c.id}
@@ -216,14 +221,15 @@ export function ClansBoard({
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleVote(c.id)}
-                    disabled={cooldownActive || busyVoteId === c.id || isMine}
+                    onClick={() => handleToggleVote(c.id)}
+                    disabled={atLimit || busy}
+                    title={atLimit ? `Llegaste al máximo de ${MAX_VOTES} votos` : undefined}
                     className={cn(
                       isMine ? 'btn-ghost' : 'btn-tactical',
                       'disabled:cursor-not-allowed disabled:opacity-50',
                     )}
                   >
-                    {isMine ? 'Tu voto' : busyVoteId === c.id ? '...' : 'Votar'}
+                    {busy ? '...' : isMine ? 'Quitar' : 'Votar'}
                   </button>
                 </li>
               );

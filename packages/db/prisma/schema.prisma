@@ -394,11 +394,13 @@ model ClanName {
 model ClanVote {
   id          String   @id @default(cuid())
   clanNameId  String
-  ipHash      String   @unique // 1 voto total por IP
+  ipHash      String   // hasta 5 votos por IP, no más de uno por (IP, clan)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   clanName ClanName @relation(fields: [clanNameId], references: [id], onDelete: Cascade)
 
+  @@unique([clanNameId, ipHash])
   @@index([clanNameId])
+  @@index([ipHash])
 }

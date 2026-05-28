@@ -15,7 +15,7 @@ const registerSchema = z.object({
 export async function GET() {
   const ipHash = await getRequestIpHash();
 
-  const [clans, myVote] = await Promise.all([
+  const [clans, myVotes, lastRegister] = await Promise.all([
     prisma.clanName.findMany({
       select: {
         id: true,
@@ -27,17 +27,16 @@ export async function GET() {
       orderBy: [{ votes: { _count: 'desc' } }, { createdAt: 'asc' }],
       take: 200,
     }),
-    prisma.clanVote.findUnique({
+    prisma.clanVote.findMany({
       where: { ipHash },
-      select: { clanNameId: true, updatedAt: true },
+      select: { clanNameId: true },
+    }),
+    prisma.clanName.findFirst({
+      where: { ipHash },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
     }),
   ]);
-
-  const lastRegister = await prisma.clanName.findFirst({
-    where: { ipHash },
-    orderBy: { createdAt: 'desc' },
-    select: { createdAt: true },
-  });
 
   return NextResponse.json({
     clans: clans.map((c) => ({
@@ -47,8 +46,7 @@ export async function GET() {
       votes: c._count.votes,
       createdAt: c.createdAt.toISOString(),
     })),
-    myVoteId: myVote?.clanNameId ?? null,
-    voteUnlockAt: myVote ? new Date(myVote.updatedAt.getTime() + REGISTER_COOLDOWN_MS).toISOString() : null,
+    myVoteIds: myVotes.map((v) => v.clanNameId),
     registerUnlockAt: lastRegister
       ? new Date(lastRegister.createdAt.getTime() + REGISTER_COOLDOWN_MS).toISOString()
       : null,

@@ -3,10 +3,11 @@ import { z } from 'zod';
 import { prisma } from '@camibot/db';
 import { getRequestIpHash } from '@/lib/ip';
 
-const VOTE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const MAX_VOTES_PER_IP = 5;
 
 const voteSchema = z.object({
   clanNameId: z.string().min(1),
+  action: z.enum(['add', 'remove']).default('add'),
 });
 
 export async function POST(req: Request) {
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Petición inválida.' }, { status: 400 });
   }
 
-  const { clanNameId } = parsed.data;
+  const { clanNameId, action } = parsed.data;
 
   const target = await prisma.clanName.findUnique({
     where: { id: clanNameId },
@@ -27,35 +28,54 @@ export async function POST(req: Request) {
   }
 
   const ipHash = await getRequestIpHash();
-  const existing = await prisma.clanVote.findUnique({
+
+  if (action === 'remove') {
+    await prisma.clanVote.deleteMany({
+      where: { ipHash, clanNameId },
+    });
+    const myVoteIds = await listMyVoteIds(ipHash);
+    return NextResponse.json({ ok: true, removed: true, myVoteIds });
+  }
+
+  // add: chequear cuota
+  const current = await prisma.clanVote.findMany({
     where: { ipHash },
-    select: { clanNameId: true, updatedAt: true },
+    select: { clanNameId: true },
   });
 
-  if (existing) {
-    if (existing.clanNameId === clanNameId) {
-      return NextResponse.json({ ok: true, clanNameId, unchanged: true });
-    }
-    const elapsed = Date.now() - existing.updatedAt.getTime();
-    if (elapsed < VOTE_COOLDOWN_MS) {
-      const remaining = Math.ceil((VOTE_COOLDOWN_MS - elapsed) / (60 * 60 * 1000));
-      return NextResponse.json(
-        {
-          error: `Ya votaste hace poco. Podés cambiar tu voto en ${remaining}h.`,
-          unlockAt: new Date(existing.updatedAt.getTime() + VOTE_COOLDOWN_MS).toISOString(),
-        },
-        { status: 429 },
-      );
-    }
-    await prisma.clanVote.update({
-      where: { ipHash },
-      data: { clanNameId },
+  if (current.some((v) => v.clanNameId === clanNameId)) {
+    return NextResponse.json({
+      ok: true,
+      unchanged: true,
+      myVoteIds: current.map((v) => v.clanNameId),
     });
-    return NextResponse.json({ ok: true, clanNameId, changed: true });
+  }
+
+  if (current.length >= MAX_VOTES_PER_IP) {
+    return NextResponse.json(
+      {
+        error: `Ya usaste tus ${MAX_VOTES_PER_IP} votos. Quitá uno para votar a otro.`,
+        myVoteIds: current.map((v) => v.clanNameId),
+      },
+      { status: 409 },
+    );
   }
 
   await prisma.clanVote.create({
     data: { clanNameId, ipHash },
   });
-  return NextResponse.json({ ok: true, clanNameId, created: true });
+
+  return NextResponse.json({
+    ok: true,
+    added: true,
+    myVoteIds: [...current.map((v) => v.clanNameId), clanNameId],
+  });
+}
+
+async function listMyVoteIds(ipHash: string): Promise<string[]> {
+  const rows = await prisma.clanVote.findMany({
+    where: { ipHash },
+    select: { clanNameId: true },
+  });
+  return rows.map((r) => r.clanNameId);
 }

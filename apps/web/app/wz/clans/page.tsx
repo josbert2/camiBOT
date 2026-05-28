@@ -33,7 +33,7 @@ export const metadata: Metadata = {
 export default async function ClansPage() {
   const ipHash = await getRequestIpHash();
 
-  const [clansRaw, myVote, lastRegister] = await Promise.all([
+  const [clansRaw, myVotes, lastRegister] = await Promise.all([
     prisma.clanName.findMany({
       select: {
         id: true,
@@ -45,9 +45,9 @@ export default async function ClansPage() {
       orderBy: [{ votes: { _count: 'desc' } }, { createdAt: 'asc' }],
       take: 200,
     }),
-    prisma.clanVote.findUnique({
+    prisma.clanVote.findMany({
       where: { ipHash },
-      select: { clanNameId: true, updatedAt: true },
+      select: { clanNameId: true },
     }),
     prisma.clanName.findFirst({
       where: { ipHash },
@@ -64,9 +64,6 @@ export default async function ClansPage() {
     createdAt: c.createdAt.toISOString(),
   }));
 
-  const voteUnlockAt = myVote
-    ? new Date(myVote.updatedAt.getTime() + COOLDOWN_MS).toISOString()
-    : null;
   const registerUnlockAt = lastRegister
     ? new Date(lastRegister.createdAt.getTime() + COOLDOWN_MS).toISOString()
     : null;
@@ -101,8 +98,7 @@ export default async function ClansPage() {
 
       <ClansBoard
         initialClans={clans}
-        initialMyVoteId={myVote?.clanNameId ?? null}
-        initialVoteUnlockAt={voteUnlockAt}
+        initialMyVoteIds={myVotes.map((v) => v.clanNameId)}
         initialRegisterUnlockAt={registerUnlockAt}
       />
     </main>
