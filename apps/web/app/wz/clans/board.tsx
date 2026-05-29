@@ -54,6 +54,29 @@ export function ClansBoard({
     return () => clearInterval(id);
   }, []);
 
+  async function refreshFromServer() {
+    try {
+      const res = await fetch(`/api/wz/clans?ts=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const json = await res.json();
+      startTransition(() => {
+        setClans(json.clans as ClanRow[]);
+        setMyVoteIds(new Set((json.myVoteIds as string[]) ?? []));
+        if (json.registerUnlockAt !== undefined) {
+          setRegisterUnlockAt(json.registerUnlockAt as string | null);
+        }
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  // Auto-refresh cada 15s para que los votos de otros se reflejen
+  useEffect(() => {
+    const id = setInterval(refreshFromServer, 15_000);
+    return () => clearInterval(id);
+  }, []);
+
   const registerRemaining = formatRemaining(registerUnlockAt);
   const votesLeft = MAX_VOTES - myVoteIds.size;
 
@@ -87,6 +110,7 @@ export function ClansBoard({
       setClans((prev) => [...prev, clan]);
       setRegisterUnlockAt(new Date(Date.now() + 24 * 3600 * 1000).toISOString());
     });
+    refreshFromServer();
     return clan;
   }
 
@@ -146,6 +170,7 @@ export function ClansBoard({
       setMyVoteIds(new Set(json.myVoteIds as string[]));
       setInfo(action === 'add' ? 'Voto agregado.' : 'Voto quitado.');
     });
+    refreshFromServer();
   }
 
   return (
