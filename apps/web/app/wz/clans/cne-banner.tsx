@@ -22,17 +22,13 @@ export function CneBanner({ clans }: Props) {
   const a = findClan(clans, TARGET_A);
   const b = findClan(clans, TARGET_B);
 
-  // Si existen, amplifico los votos reales con multiplicador "electoral" + base.
-  // Si no, hardcodeo los números del meme.
-  const baseA = 1_064_415;
-  const baseB = 1_062_172;
-  const votesA = a ? baseA + a.votes * 50_321 : baseA;
-  const votesB = b ? baseB + b.votes * 50_321 : baseB;
+  const votesA = a?.votes ?? 0;
+  const votesB = b?.votes ?? 0;
   const total = votesA + votesB;
-  const pctA = ((votesA / total) * 100).toFixed(2);
-  const pctB = ((votesB / total) * 100).toFixed(2);
+  const pctA = total > 0 ? ((votesA / total) * 100).toFixed(2) : '0.00';
+  const pctB = total > 0 ? ((votesB / total) * 100).toFixed(2) : '0.00';
   const lead = Math.abs(votesA - votesB);
-  const leader = votesA >= votesB ? 'VZLTM' : 'VNLTM';
+  const leader = votesA === votesB ? null : votesA > votesB ? 'VZLTM' : 'VNLTM';
 
   const now = new Date();
   const time = now.toLocaleTimeString('es-HN', {
@@ -91,15 +87,21 @@ export function CneBanner({ clans }: Props) {
       </div>
 
       <div className="mt-6 border-2 border-[#1e293b]/20 bg-white px-4 py-3 text-center">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#64748b]">
-          Ventaja de {leader}:
-        </span>{' '}
-        <span className="text-base font-black text-[#0f172a]">{fmt(lead)} votos</span>
+        {leader ? (
+          <>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#64748b]">
+              Ventaja de {leader}:
+            </span>{' '}
+            <span className="text-base font-black text-[#0f172a]">
+              {fmt(lead)} {lead === 1 ? 'voto' : 'votos'}
+            </span>
+          </>
+        ) : (
+          <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#64748b]">
+            Empate técnico
+          </span>
+        )}
       </div>
-
-      <p className="mt-4 text-center text-[10px] uppercase tracking-widest text-[#64748b]">
-        Este anuncio es una ficción del catálogo Tournify. No representa una elección real.
-      </p>
     </section>
   );
 }
