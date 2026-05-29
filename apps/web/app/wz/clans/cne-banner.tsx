@@ -6,6 +6,7 @@ import type { ClanRow } from './board';
 type Props = {
   clans: ClanRow[];
   myVoteIds: Set<string>;
+  votesLeft: number;
   registerLocked: boolean;
   busyVoteId: string | null;
   onToggleVote: (clanId: string) => void | Promise<void>;
@@ -29,6 +30,7 @@ function fmt(n: number): string {
 export function CneBanner({
   clans,
   myVoteIds,
+  votesLeft,
   registerLocked,
   busyVoteId,
   onToggleVote,
@@ -101,6 +103,7 @@ export function CneBanner({
           ringColor="#dc2626"
           isLeader={leader === 'VZLTM'}
           isVoted={a ? myVoteIds.has(a.id) : false}
+          votesLeft={votesLeft}
           registerLocked={registerLocked}
           busy={Boolean(a && busyVoteId === a.id)}
           onToggleVote={onToggleVote}
@@ -114,6 +117,7 @@ export function CneBanner({
           ringColor="#2563eb"
           isLeader={leader === 'VNLTM'}
           isVoted={b ? myVoteIds.has(b.id) : false}
+          votesLeft={votesLeft}
           registerLocked={registerLocked}
           busy={Boolean(b && busyVoteId === b.id)}
           onToggleVote={onToggleVote}
@@ -149,6 +153,7 @@ function CandidateCard({
   ringColor,
   isLeader,
   isVoted,
+  votesLeft,
   registerLocked,
   busy,
   onToggleVote,
@@ -161,11 +166,13 @@ function CandidateCard({
   ringColor: string;
   isLeader: boolean;
   isVoted: boolean;
+  votesLeft: number;
   registerLocked: boolean;
   busy: boolean;
   onToggleVote: (clanId: string) => void | Promise<void>;
   onCreateClan: (name: string) => void | Promise<unknown>;
 }) {
+  const atLimit = votesLeft === 0 && !isVoted;
   return (
     <div className="flex flex-col items-center border border-[#e2e8f0] bg-white p-4">
       <div
@@ -193,7 +200,8 @@ function CandidateCard({
           <button
             type="button"
             onClick={() => onToggleVote(clan.id)}
-            disabled={busy}
+            disabled={busy || atLimit}
+            title={atLimit ? 'Ya usaste tus 5 votos' : undefined}
             className="w-full border-2 px-3 py-2 text-xs font-bold uppercase tracking-widest transition disabled:cursor-not-allowed disabled:opacity-50"
             style={{
               borderColor: ringColor,
@@ -201,7 +209,13 @@ function CandidateCard({
               color: isVoted ? '#fff' : ringColor,
             }}
           >
-            {busy ? '...' : isVoted ? 'Quitar voto' : `Votar por ${name}`}
+            {busy
+              ? '...'
+              : isVoted
+                ? 'Quitar voto'
+                : atLimit
+                  ? 'Sin votos disponibles'
+                  : `Votar por ${name}`}
           </button>
         ) : (
           <button

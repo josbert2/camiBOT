@@ -178,6 +178,7 @@ export function ClansBoard({
       <CneBanner
         clans={clans}
         myVoteIds={myVoteIds}
+        votesLeft={votesLeft}
         registerLocked={Boolean(registerRemaining)}
         busyVoteId={busyVoteId}
         onToggleVote={handleToggleVote}
