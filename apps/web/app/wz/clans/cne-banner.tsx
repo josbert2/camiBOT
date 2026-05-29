@@ -1,7 +1,15 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import type { ClanRow } from './board';
 
 type Props = {
   clans: ClanRow[];
+  myVoteIds: Set<string>;
+  registerLocked: boolean;
+  busyVoteId: string | null;
+  onToggleVote: (clanId: string) => void | Promise<void>;
+  onCreateClan: (name: string) => void | Promise<unknown>;
 };
 
 const TARGET_A = 'vzltm';
@@ -18,7 +26,14 @@ function fmt(n: number): string {
   return n.toLocaleString('es-CL');
 }
 
-export function CneBanner({ clans }: Props) {
+export function CneBanner({
+  clans,
+  myVoteIds,
+  registerLocked,
+  busyVoteId,
+  onToggleVote,
+  onCreateClan,
+}: Props) {
   const a = findClan(clans, TARGET_A);
   const b = findClan(clans, TARGET_B);
 
@@ -30,18 +45,25 @@ export function CneBanner({ clans }: Props) {
   const lead = Math.abs(votesA - votesB);
   const leader = votesA === votesB ? null : votesA > votesB ? 'VZLTM' : 'VNLTM';
 
-  const now = new Date();
-  const time = now.toLocaleTimeString('es-HN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: 'America/Tegucigalpa',
-  });
-  const date = now.toLocaleDateString('es-HN', {
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'America/Tegucigalpa',
-  });
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  let timeLabel = '';
+  let dateLabel = '';
+  if (mounted) {
+    const now = new Date();
+    timeLabel = now.toLocaleTimeString('es-HN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/Tegucigalpa',
+    });
+    dateLabel = now.toLocaleDateString('es-HN', {
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'America/Tegucigalpa',
+    });
+  }
 
   return (
     <section
@@ -65,24 +87,37 @@ export function CneBanner({ clans }: Props) {
           Resultados parciales
         </h2>
         <p className="mt-1 text-xs text-[#64748b]">
-          La Junta Directiva del CNE ha decidido los resultados. Actualización {time}, {date}.
+          La Junta Directiva del CNE ha decidido los resultados.
+          {mounted && ` Actualización ${timeLabel}, ${dateLabel}.`}
         </p>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <CandidateCard
           name="VZLTM"
+          clan={a}
           votes={votesA}
           pct={pctA}
           ringColor="#dc2626"
           isLeader={leader === 'VZLTM'}
+          isVoted={a ? myVoteIds.has(a.id) : false}
+          registerLocked={registerLocked}
+          busy={Boolean(a && busyVoteId === a.id)}
+          onToggleVote={onToggleVote}
+          onCreateClan={onCreateClan}
         />
         <CandidateCard
           name="VNLTM"
+          clan={b}
           votes={votesB}
           pct={pctB}
           ringColor="#2563eb"
           isLeader={leader === 'VNLTM'}
+          isVoted={b ? myVoteIds.has(b.id) : false}
+          registerLocked={registerLocked}
+          busy={Boolean(b && busyVoteId === b.id)}
+          onToggleVote={onToggleVote}
+          onCreateClan={onCreateClan}
         />
       </div>
 
@@ -98,7 +133,7 @@ export function CneBanner({ clans }: Props) {
           </>
         ) : (
           <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#64748b]">
-            Empate técnico
+            {total === 0 ? 'Sin votos todavía' : 'Empate técnico'}
           </span>
         )}
       </div>
@@ -108,16 +143,28 @@ export function CneBanner({ clans }: Props) {
 
 function CandidateCard({
   name,
+  clan,
   votes,
   pct,
   ringColor,
   isLeader,
+  isVoted,
+  registerLocked,
+  busy,
+  onToggleVote,
+  onCreateClan,
 }: {
   name: string;
+  clan: ClanRow | undefined;
   votes: number;
   pct: string;
   ringColor: string;
   isLeader: boolean;
+  isVoted: boolean;
+  registerLocked: boolean;
+  busy: boolean;
+  onToggleVote: (clanId: string) => void | Promise<void>;
+  onCreateClan: (name: string) => void | Promise<unknown>;
 }) {
   return (
     <div className="flex flex-col items-center border border-[#e2e8f0] bg-white p-4">
@@ -125,7 +172,7 @@ function CandidateCard({
         className="flex h-24 w-24 items-center justify-center rounded-full border-4 font-black text-[#0f172a]"
         style={{ borderColor: ringColor }}
       >
-        <span className="text-xl tracking-tight">{name.slice(0, 5)}</span>
+        <span className="text-xl tracking-tight">{name}</span>
       </div>
       <div className="mt-3 text-center">
         <div className="text-sm font-bold uppercase tracking-wider text-[#0f172a]">{name}</div>
@@ -139,6 +186,38 @@ function CandidateCard({
         <div className="text-sm font-bold" style={{ color: ringColor }}>
           {pct}%
         </div>
+      </div>
+
+      <div className="mt-4 w-full">
+        {clan ? (
+          <button
+            type="button"
+            onClick={() => onToggleVote(clan.id)}
+            disabled={busy}
+            className="w-full border-2 px-3 py-2 text-xs font-bold uppercase tracking-widest transition disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              borderColor: ringColor,
+              backgroundColor: isVoted ? ringColor : 'transparent',
+              color: isVoted ? '#fff' : ringColor,
+            }}
+          >
+            {busy ? '...' : isVoted ? 'Quitar voto' : `Votar por ${name}`}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onCreateClan(name)}
+            disabled={registerLocked}
+            title={registerLocked ? 'Ya registraste un nombre en las últimas 24h' : undefined}
+            className="w-full border-2 px-3 py-2 text-xs font-bold uppercase tracking-widest transition disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              borderColor: ringColor,
+              color: ringColor,
+            }}
+          >
+            {registerLocked ? 'Registro bloqueado 24h' : `Postular ${name}`}
+          </button>
+        )}
       </div>
     </div>
   );

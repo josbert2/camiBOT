@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { prisma } from '@camibot/db';
 import { getRequestIpHash } from '@/lib/ip';
 import { ClansBoard, type ClanRow } from './board';
-import { CneBanner } from './cne-banner';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,8 +95,6 @@ export default async function ClansPage() {
           </span>
         </div>
       </header>
-
-      <CneBanner clans={clans} />
 
       <ClansBoard
         initialClans={clans}

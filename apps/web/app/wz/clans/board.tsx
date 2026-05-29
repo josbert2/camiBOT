@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { cn } from '@/lib/utils';
+import { CneBanner } from './cne-banner';
 
 export type ClanRow = {
   id: string;
@@ -63,12 +64,11 @@ export function ClansBoard({
     });
   }, [clans]);
 
-  async function handleRegister(e: React.FormEvent) {
-    e.preventDefault();
+  async function registerClan(rawName: string): Promise<ClanRow | null> {
     setError(null);
     setInfo(null);
-    const trimmed = name.trim();
-    if (!trimmed) return;
+    const trimmed = rawName.trim();
+    if (!trimmed) return null;
 
     const res = await fetch('/api/wz/clans', {
       method: 'POST',
@@ -79,15 +79,32 @@ export function ClansBoard({
     if (!res.ok) {
       setError(json.error ?? 'Error inesperado.');
       if (json.unlockAt) setRegisterUnlockAt(json.unlockAt as string);
-      return;
+      return null;
     }
 
+    const clan = json.clan as ClanRow;
     startTransition(() => {
-      setClans((prev) => [...prev, json.clan as ClanRow]);
-      setName('');
+      setClans((prev) => [...prev, clan]);
       setRegisterUnlockAt(new Date(Date.now() + 24 * 3600 * 1000).toISOString());
-      setInfo(`Registraste "${(json.clan as ClanRow).name}". Ya podés votarlo.`);
     });
+    return clan;
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    const clan = await registerClan(name);
+    if (clan) {
+      setName('');
+      setInfo(`Registraste "${clan.name}". Ya podés votarlo.`);
+    }
+  }
+
+  async function handleCreateClanFromBanner(rawName: string) {
+    const clan = await registerClan(rawName);
+    if (clan) {
+      setInfo(`Postulaste "${clan.name}". Votando automáticamente…`);
+      await handleToggleVote(clan.id);
+    }
   }
 
   async function handleToggleVote(clanId: string) {
@@ -133,6 +150,15 @@ export function ClansBoard({
 
   return (
     <div className="space-y-6">
+      <CneBanner
+        clans={clans}
+        myVoteIds={myVoteIds}
+        registerLocked={Boolean(registerRemaining)}
+        busyVoteId={busyVoteId}
+        onToggleVote={handleToggleVote}
+        onCreateClan={handleCreateClanFromBanner}
+      />
+
       <section className="hud-panel p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="display text-lg uppercase">Registrar nombre</h2>
