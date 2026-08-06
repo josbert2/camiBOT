@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 /** Post público para compartir. Cacheado por request (metadata + page). */
 const getSharePost = cache(async (id: string) => {
   const post = await prisma.post.findFirst({
-    where: { id, removedAt: null, status: 'PUBLISHED' },
+    where: { removedAt: null, status: 'PUBLISHED', OR: [{ id }, { slug: id }] },
     select: {
       id: true,
       caption: true,

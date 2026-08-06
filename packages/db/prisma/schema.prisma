@@ -427,6 +427,8 @@ model Post {
   // filtrar por servidor sin migrar nada.
   guildId  String?
   caption  String?
+  // Slug opcional para compartir con una URL propia: /c/<slug>. Unico.
+  slug     String?    @unique
   status   PostStatus @default(PUBLISHED)
 
   // Media en R2. Guardamos la key, no la URL — el host publico se resuelve

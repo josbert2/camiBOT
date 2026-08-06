@@ -34,6 +34,7 @@ export type FeedComment = {
 
 export type FeedPost = {
   id: string;
+  slug: string | null;
   caption: string | null;
   videoUrl: string;
   posterUrl: string | null;
@@ -51,6 +52,22 @@ export type FeedPost = {
   canDelete: boolean;
   comments: FeedComment[];
 };
+
+/**
+ * Normaliza un texto a slug ASCII (minúsculas, guiones). Devuelve null si
+ * queda con menos de 3 chars útiles. Tope de 40.
+ */
+export function normalizeSlug(raw: string): string | null {
+  const s = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+    .replace(/-+$/g, '');
+  return s.length >= 3 ? s : null;
+}
 
 /** Avatar de Discord a partir del hash que guardamos en el User. */
 export function discordAvatarUrl(discordId: string, avatar: string | null): string | null {
@@ -183,6 +200,7 @@ export async function getFeed(
     const likes = p.likes as { id: string }[] | undefined;
     return {
       id: p.id,
+      slug: p.slug,
       caption: p.caption,
       videoUrl: publicUrl(p.videoKey),
       posterUrl: p.posterKey ? publicUrl(p.posterKey) : null,

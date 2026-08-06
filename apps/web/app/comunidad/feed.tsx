@@ -176,24 +176,43 @@ function PostCard({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shared, setShared] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [slug, setSlug] = useState(post.slug);
+  const [slugDraft, setSlugDraft] = useState(post.slug ?? '');
+  const [slugBusy, setSlugBusy] = useState(false);
+  const [slugError, setSlugError] = useState<string | null>(null);
 
-  async function sharePost() {
-    const url = `${window.location.origin}/c/${post.id}`;
-    const title = post.caption?.trim() || 'Mirá esta play';
-    if (navigator.share) {
-      try {
-        await navigator.share({ title, url });
-        return;
-      } catch {
-        // canceló el share nativo: seguimos al fallback de copiar
-      }
-    }
+  const shareUrl = () =>
+    `${typeof window !== 'undefined' ? window.location.origin : ''}/c/${slug || post.id}`;
+
+  async function copyShare() {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(shareUrl());
       setShared(true);
       setTimeout(() => setShared(false), 1500);
     } catch {
       // sin clipboard: nada que hacer
+    }
+  }
+
+  async function saveSlug() {
+    if (slugBusy) return;
+    setSlugBusy(true);
+    setSlugError(null);
+    try {
+      const res = await fetch(`/api/community/posts/${post.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug: slugDraft }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.error ?? 'No se pudo guardar.');
+      setSlug(json.slug);
+      setSlugDraft(json.slug ?? '');
+    } catch (err) {
+      setSlugError(err instanceof Error ? err.message : 'Algo salió mal.');
+    } finally {
+      setSlugBusy(false);
     }
   }
 
@@ -340,14 +359,72 @@ function PostCard({
           <span>{post.commentCount}</span>
         </button>
 
-        <button
-          onClick={sharePost}
-          title="Compartir"
-          className="ml-auto flex items-center gap-2 border-2 border-transparent px-3 py-1.5 text-xs uppercase tracking-widest text-muted-foreground transition hover:border-border-strong hover:text-foreground"
-        >
-          <HugeiconsIcon icon={shared ? Tick02Icon : Share08Icon} className="h-4 w-4" />
-          <span>{shared ? 'Copiado' : 'Compartir'}</span>
-        </button>
+        <div className="relative ml-auto">
+          <button
+            onClick={() => setShareOpen((o) => !o)}
+            title="Compartir"
+            className="flex items-center gap-2 border-2 border-transparent px-3 py-1.5 text-xs uppercase tracking-widest text-muted-foreground transition hover:border-border-strong hover:text-foreground"
+          >
+            <HugeiconsIcon icon={Share08Icon} className="h-4 w-4" />
+            <span>Compartir</span>
+          </button>
+
+          {shareOpen && (
+            <>
+              <button
+                aria-label="Cerrar"
+                onClick={() => setShareOpen(false)}
+                className="fixed inset-0 z-30 cursor-default"
+              />
+              <div className="absolute bottom-full right-0 z-40 mb-2 w-72 border-2 border-border-strong bg-card p-3 shadow-xl">
+                <div className="mb-2 tag-tactical">// COMPARTIR</div>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={shareUrl()}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="min-w-0 flex-1 border-2 border-border bg-input px-2 py-1.5 text-[11px] text-muted-foreground outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={copyShare}
+                    title="Copiar"
+                    className="btn-tactical text-xs"
+                  >
+                    <HugeiconsIcon icon={shared ? Tick02Icon : Share08Icon} className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {post.canDelete && (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <div className="mb-1 tag-tactical">URL personalizada</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-muted-foreground">/c/</span>
+                      <input
+                        value={slugDraft}
+                        onChange={(e) => setSlugDraft(e.target.value)}
+                        placeholder="mi-mejor-play"
+                        className="min-w-0 flex-1 border-2 border-border bg-input px-2 py-1.5 text-xs outline-none focus:border-border-strong"
+                      />
+                      <button
+                        type="button"
+                        onClick={saveSlug}
+                        disabled={slugBusy}
+                        className="btn-ghost text-xs disabled:opacity-50"
+                      >
+                        {slugBusy ? '…' : 'Guardar'}
+                      </button>
+                    </div>
+                    {slugError && <p className="mt-1 text-[11px] text-danger">{slugError}</p>}
+                    <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                      Vacío = URL por defecto.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {showComments && (
