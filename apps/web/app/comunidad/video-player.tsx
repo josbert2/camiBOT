@@ -122,7 +122,7 @@ export function VideoPlayer({
         autoPlay={autoPlay}
         muted={autoPlay}
         playsInline
-        preload={autoPlay ? 'auto' : 'none'}
+        preload={autoPlay ? 'auto' : 'metadata'}
         className={`w-full object-contain ${fullscreen ? 'h-full max-h-screen' : 'max-h-[70vh]'}`}
         onClick={togglePlay}
         onPlay={() => {

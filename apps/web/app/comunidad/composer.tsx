@@ -39,10 +39,10 @@ type Picked = {
 async function inspect(file: File): Promise<Omit<Picked, 'file'>> {
   const previewUrl = URL.createObjectURL(file);
   const video = document.createElement('video');
-  video.preload = 'metadata';
+  // 'auto' para tener frames disponibles al sacar el poster.
+  video.preload = 'auto';
   video.muted = true;
   video.playsInline = true;
-  video.src = previewUrl;
 
   const meta = await new Promise<{ d: number; w: number; h: number } | null>((resolve) => {
     const done = () =>
@@ -51,9 +51,13 @@ async function inspect(file: File): Promise<Omit<Picked, 'file'>> {
         w: video.videoWidth,
         h: video.videoHeight,
       });
-    video.onloadedmetadata = done;
-    video.onerror = () => resolve(null);
-    setTimeout(() => resolve(null), 8000);
+    // Handlers ANTES del src: con un blob local la metadata puede cargar al
+    // instante y disparar el evento antes de asignar el listener (race).
+    video.addEventListener('loadedmetadata', done, { once: true });
+    video.addEventListener('error', () => resolve(null), { once: true });
+    setTimeout(() => resolve(null), 10000);
+    video.src = previewUrl;
+    if (video.readyState >= 1) done();
   });
 
   if (!meta || !meta.w) {
@@ -134,6 +138,7 @@ export function Composer({
   const [gameMode, setGameMode] = useState('');
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -170,6 +175,7 @@ export function Composer({
     setGameMode('');
     setTrimStart(0);
     setTrimEnd(0);
+    setVideoDuration(0);
     setError(null);
     if (inputRef.current) inputRef.current.value = '';
   }
@@ -192,6 +198,7 @@ export function Composer({
       setPicked({ file, ...info });
       setTrimStart(0);
       setTrimEnd(info.duration ?? 0);
+      setVideoDuration(info.duration ?? 0);
       // Precargamos el core de ffmpeg (dynamic import) para que el recorte no
       // espere la descarga, sin sumar peso al bundle del feed.
       import('@/lib/ffmpeg-trim').then((m) => m.preloadFFmpeg()).catch(() => {});
@@ -209,7 +216,7 @@ export function Composer({
       // Recorte opcional: si el rango no cubre todo el clip, re-encodeamos.
       let videoBlob: Blob = picked.file;
       let durationSec = picked.durationSec;
-      const full = picked.duration ?? 0;
+      const full = videoDuration || picked.duration || 0;
       const isTrimmed = full > 0 && (trimStart > 0.05 || trimEnd < full - 0.05);
 
       if (isTrimmed) {
@@ -386,27 +393,18 @@ export function Composer({
               </button>
             </div>
 
-            {picked.duration && picked.duration > 0.5 ? (
-              <VideoTrimmer
-                src={picked.previewUrl}
-                duration={picked.duration}
-                start={trimStart}
-                end={trimEnd}
-                disabled={!!busy}
-                onChange={(s, e) => {
-                  setTrimStart(s);
-                  setTrimEnd(e);
-                }}
-              />
-            ) : (
-              // eslint-disable-next-line jsx-a11y/media-has-caption
-              <video
-                src={picked.previewUrl}
-                controls
-                playsInline
-                className="max-h-[380px] w-full bg-black object-contain"
-              />
-            )}
+            <VideoTrimmer
+              src={picked.previewUrl}
+              duration={picked.duration ?? 0}
+              start={trimStart}
+              end={trimEnd}
+              disabled={!!busy}
+              onChange={(s, e) => {
+                setTrimStart(s);
+                setTrimEnd(e);
+              }}
+              onDurationChange={setVideoDuration}
+            />
           </div>
 
           <div>
