@@ -69,38 +69,41 @@ export function getUserSeasonPoints(userId: string, season: Season): Promise<num
   });
 }
 
-/** Top N de la temporada, ordenado por puntos (likes en la ventana). */
+/**
+ * Top N de la temporada, ordenado por puntos (likes en la ventana). Incluye a
+ * TODOS los usuarios registrados (LEFT JOIN), así los de 0 puntos también salen.
+ */
 export async function getSeasonLeaderboard(
   season: Season,
   limit = 10,
 ): Promise<LeaderboardRow[]> {
   const rows = await prisma.$queryRaw<{ authorId: string; points: number }[]>`
-    SELECT p."authorId", COUNT(*)::int AS points
-    FROM "PostLike" l
-    JOIN "Post" p ON p.id = l."postId"
-    WHERE l."createdAt" >= ${season.startsAt}
-      AND l."createdAt" < ${season.endsAt}
-      AND p."removedAt" IS NULL
-      AND p."status" = 'PUBLISHED'
-    GROUP BY p."authorId"
-    ORDER BY points DESC, p."authorId" ASC
+    SELECT u.id AS "authorId", COUNT(l.id)::int AS points
+    FROM "User" u
+    LEFT JOIN "Post" p
+      ON p."authorId" = u.id AND p."removedAt" IS NULL AND p."status" = 'PUBLISHED'
+    LEFT JOIN "PostLike" l
+      ON l."postId" = p.id AND l."createdAt" >= ${season.startsAt} AND l."createdAt" < ${season.endsAt}
+    GROUP BY u.id
+    ORDER BY points DESC, u.id ASC
     LIMIT ${limit}
   `;
   return hydrateRows(rows);
 }
 
 /**
- * Ranking all-time (sin ventana): top por likes recibidos totales. Se usa en
- * el sidebar cuando no hay temporada activa.
+ * Ranking all-time (sin ventana): todos los usuarios por likes recibidos
+ * totales. Se usa en el sidebar cuando no hay temporada activa.
  */
 export async function getAllTimeLeaderboard(limit = 10): Promise<LeaderboardRow[]> {
   const rows = await prisma.$queryRaw<{ authorId: string; points: number }[]>`
-    SELECT p."authorId", COUNT(*)::int AS points
-    FROM "PostLike" l
-    JOIN "Post" p ON p.id = l."postId"
-    WHERE p."removedAt" IS NULL AND p."status" = 'PUBLISHED'
-    GROUP BY p."authorId"
-    ORDER BY points DESC, p."authorId" ASC
+    SELECT u.id AS "authorId", COUNT(l.id)::int AS points
+    FROM "User" u
+    LEFT JOIN "Post" p
+      ON p."authorId" = u.id AND p."removedAt" IS NULL AND p."status" = 'PUBLISHED'
+    LEFT JOIN "PostLike" l ON l."postId" = p.id
+    GROUP BY u.id
+    ORDER BY points DESC, u.id ASC
     LIMIT ${limit}
   `;
   return hydrateRows(rows);
@@ -180,7 +183,7 @@ export async function closeSeason(seasonId: string): Promise<Season> {
   if (season.status === 'CLOSED') return season;
 
   const top = await getSeasonLeaderboard(season, 1);
-  const winner = top[0] ?? null;
+  const winner = top[0] && top[0].points > 0 ? top[0] : null;
 
   return prisma.season.update({
     where: { id: seasonId },
