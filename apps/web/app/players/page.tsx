@@ -48,6 +48,7 @@ export default async function PlayersPage() {
     })
     .sort((a, b) => {
       if (b.points !== a.points) return b.points - a.points;
+      if (b.likes !== a.likes) return b.likes - a.likes;
       if (b.tournamentsWon !== a.tournamentsWon) return b.tournamentsWon - a.tournamentsWon;
       return b.wins - a.wins;
     });
