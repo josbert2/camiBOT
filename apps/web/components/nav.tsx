@@ -9,6 +9,7 @@ import {
   Logout03Icon,
   Login03Icon,
   GunIcon,
+  UserGroupIcon,
 } from '@hugeicons/core-free-icons';
 import { auth, signOut } from '@/auth';
 import { isAdmin } from '@/lib/admin';
@@ -31,6 +32,9 @@ export async function Nav() {
           <NavLink href="/wz" icon={GunIcon}>
             WZ Meta
           </NavLink>
+          <NavLink href="/comunidad" icon={UserGroupIcon}>
+            Comunidad
+          </NavLink>
           <NavLink href="/comandos" icon={TerminalIcon}>
             Ops
           </NavLink>
@@ -50,6 +54,7 @@ export async function Nav() {
           <div className="flex gap-1 md:hidden">
             <NavLink href="/players" icon={RankingIcon} small />
             <NavLink href="/wz" icon={GunIcon} small />
+            <NavLink href="/comunidad" icon={UserGroupIcon} small />
             <NavLink href="/comandos" icon={TerminalIcon} small />
           </div>
 

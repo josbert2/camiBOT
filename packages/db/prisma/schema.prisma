@@ -33,6 +33,11 @@ model User {
   ownedTournaments Tournament[]      @relation("TournamentCreator")
   leaderboardEntries LeaderboardEntry[]
   guildMemberships GuildMember[]
+  posts        Post[]        @relation("PostAuthor")
+  postLikes    PostLike[]    @relation("PostLiker")
+  postComments PostComment[] @relation("CommentAuthor")
+  seasonsWon     Season[]    @relation("SeasonWinner")
+  seasonsCreated Season[]    @relation("SeasonCreator")
 
   @@index([discordId])
 }
@@ -56,6 +61,7 @@ model Guild {
   games        Game[]
   leaderboards Leaderboard[]
   members      GuildMember[]
+  posts        Post[]
   subscription Subscription? @relation(fields: [subscriptionId], references: [id])
 
   @@index([discordId])
@@ -403,4 +409,122 @@ model ClanVote {
   @@unique([clanNameId, ipHash])
   @@index([clanNameId])
   @@index([ipHash])
+}
+
+// ============================================================
+// Comunidad — feed de plays
+// ============================================================
+
+enum PostStatus {
+  PUBLISHED
+  REMOVED
+}
+
+model Post {
+  id       String     @id @default(cuid())
+  authorId String
+  // Reservado: hoy el feed es global, pero dejamos la columna para poder
+  // filtrar por servidor sin migrar nada.
+  guildId  String?
+  caption  String?
+  status   PostStatus @default(PUBLISHED)
+
+  // Media en R2. Guardamos la key, no la URL — el host publico se resuelve
+  // en runtime desde R2_PUBLIC_URL, asi se puede mover el bucket/dominio.
+  videoKey    String
+  posterKey   String?
+  durationSec Int?
+  width       Int?
+  height      Int?
+  sizeBytes   Int?
+
+  // Tags opcionales contra el catalogo de /wz (dumps de wzstats).
+  weaponId   String?
+  weaponName String?
+  gameMode   String?
+
+  // Moderacion: soft delete, para dejar rastro de quien bajo que.
+  removedAt     DateTime?
+  removedById   String?
+  removedReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User          @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  guild    Guild?        @relation(fields: [guildId], references: [id], onDelete: SetNull)
+  likes    PostLike[]
+  comments PostComment[]
+
+  @@index([status, createdAt])
+  @@index([authorId])
+  @@index([weaponId])
+  @@index([guildId])
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation("PostLiker", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model PostComment {
+  id       String  @id @default(cuid())
+  postId   String
+  authorId String
+  body     String
+
+  removedAt   DateTime?
+  removedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+}
+
+enum SeasonStatus {
+  ACTIVE
+  CLOSED
+}
+
+/**
+ * Temporada de la comunidad: una "meta" con premio (ej: pase Blackcell).
+ * Los puntos = likes recibidos por un usuario en sus clips DENTRO del rango
+ * [startsAt, endsAt). Al cerrar, gana quien mas puntos tenga.
+ */
+model Season {
+  id           String       @id @default(cuid())
+  name         String
+  prize        String       @default("Battle Pass BlackCell")
+  targetPoints Int?
+  startsAt     DateTime
+  endsAt       DateTime
+  status       SeasonStatus @default(ACTIVE)
+
+  // Se completan al cerrar la temporada.
+  winnerId     String?
+  winnerPoints Int?
+
+  createdById String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  winner    User? @relation("SeasonWinner", fields: [winnerId], references: [id], onDelete: SetNull)
+  createdBy User  @relation("SeasonCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([status, endsAt])
 }

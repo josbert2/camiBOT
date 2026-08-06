@@ -1,9 +1,10 @@
 import { prisma } from '@camibot/db';
 import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { ChampionIcon, RankingIcon } from '@hugeicons/core-free-icons';
+import { ChampionIcon, RankingIcon, FavouriteIcon } from '@hugeicons/core-free-icons';
 import type { Metadata } from 'next';
 import { getRankProgress } from '@/lib/ranks';
+import { getLikesByAuthor } from '@/lib/community';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,8 @@ export default async function PlayersPage() {
     },
   });
 
+  const likesByUser = await getLikesByAuthor(users.map((u) => u.id));
+
   const rows = users
     .map((u) => {
       const wins = u.participations.reduce((s, p) => s + p.wins, 0);
@@ -40,6 +43,7 @@ export default async function PlayersPage() {
         tournamentsPlayed,
         tournamentsWon,
         points,
+        likes: likesByUser.get(u.id) ?? 0,
       };
     })
     .sort((a, b) => {
@@ -80,6 +84,7 @@ export default async function PlayersPage() {
                 <th className="px-3 py-2 text-right tag-tactical">Wins</th>
                 <th className="px-3 py-2 text-right tag-tactical">K/D</th>
                 <th className="px-3 py-2 text-right tag-tactical">KDA</th>
+                <th className="px-3 py-2 text-right tag-tactical">Likes</th>
                 <th className="px-3 py-2 text-right tag-tactical">XP</th>
               </tr>
             </thead>
@@ -140,6 +145,12 @@ export default async function PlayersPage() {
                     </td>
                     <td className={`px-3 py-2 text-right font-bold tabular-nums ${kdaClass}`}>
                       {kda}
+                    </td>
+                    <td className="px-3 py-2 text-right tabular-nums text-danger">
+                      <span className="inline-flex items-center gap-1">
+                        <HugeiconsIcon icon={FavouriteIcon} className="h-3 w-3" />
+                        {r.likes}
+                      </span>
                     </td>
                     <td className="display px-3 py-2 text-right text-xl tabular-nums text-primary">
                       {r.points}

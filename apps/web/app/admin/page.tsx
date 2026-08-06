@@ -134,6 +134,12 @@ export default async function AdminPage({ searchParams }: SearchParamsP) {
         </div>
         <div className="flex gap-2">
           <Link
+            href="/admin/temporadas"
+            className="border-2 border-border-strong px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-foreground hover:text-background"
+          >
+            Temporadas
+          </Link>
+          <Link
             href="/dashboard"
             className="border-2 border-border-strong px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-foreground hover:text-background"
           >
