@@ -20,6 +20,10 @@ model User {
   discordId    String   @unique
   username     String
   globalName   String?
+  // Apodo elegido por el usuario para mostrarse en la comunidad. nicknameSet
+  // marca que ya pasó por el prompt (aunque haya elegido usar el de Discord).
+  nickname     String?
+  nicknameSet  Boolean  @default(false)
   avatar       String?
   email        String?
   // OAuth tokens (encriptados a nivel app)

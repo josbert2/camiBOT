@@ -26,6 +26,7 @@ const userSelect = {
   discordId: true,
   username: true,
   globalName: true,
+  nickname: true,
   avatar: true,
 } as const;
 
@@ -34,13 +35,14 @@ type RawUser = {
   discordId: string;
   username: string;
   globalName: string | null;
+  nickname: string | null;
   avatar: string | null;
 };
 
 function toAuthor(u: RawUser): PostAuthor {
   return {
     id: u.id,
-    name: u.globalName ?? u.username,
+    name: u.nickname ?? u.globalName ?? u.username,
     username: u.username,
     avatarUrl: discordAvatarUrl(u.discordId, u.avatar),
   };

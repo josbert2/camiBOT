@@ -93,6 +93,7 @@ const authorSelect = {
   discordId: true,
   username: true,
   globalName: true,
+  nickname: true,
   avatar: true,
 } as const;
 
@@ -101,16 +102,34 @@ type RawAuthor = {
   discordId: string;
   username: string;
   globalName: string | null;
+  nickname: string | null;
   avatar: string | null;
 };
 
 function toAuthor(u: RawAuthor): PostAuthor {
   return {
     id: u.id,
-    name: u.globalName ?? u.username,
+    // El apodo elegido manda; si no, el nombre de Discord.
+    name: u.nickname ?? u.globalName ?? u.username,
     username: u.username,
     avatarUrl: discordAvatarUrl(u.discordId, u.avatar),
   };
+}
+
+export type NicknameStatus = { needsNickname: boolean; discordName: string };
+
+/** Si el usuario logueado todavía no pasó por el prompt de apodo. */
+export async function getNicknameStatus(
+  session: Session | null | undefined,
+): Promise<NicknameStatus | null> {
+  const userId = session?.user?.id;
+  if (!userId) return null;
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { nicknameSet: true, globalName: true, username: true },
+  });
+  if (!u) return null;
+  return { needsNickname: !u.nicknameSet, discordName: u.globalName ?? u.username };
 }
 
 export type ProfileSummary = {

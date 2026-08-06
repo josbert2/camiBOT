@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { UserGroupIcon, Cancel01Icon, InformationCircleIcon } from '@hugeicons/core-free-icons';
 import { auth } from '@/auth';
-import { getFeed, getProfileSummary } from '@/lib/community';
+import { getFeed, getProfileSummary, getNicknameStatus } from '@/lib/community';
 import {
   getActiveSeason,
   getSeasonLeaderboard,
@@ -18,6 +18,7 @@ import { LoginProvider } from './login-gate';
 import { IdentityCard } from './identity-card';
 import { RankingRail } from './ranking-rail';
 import { SeasonBanner } from './season-banner';
+import { NicknameGate } from './nickname-gate';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,10 +36,11 @@ export default async function ComunidadPage({
   const { arma } = await searchParams;
   const session = await auth();
 
-  const [{ posts, nextCursor }, profile, season] = await Promise.all([
+  const [{ posts, nextCursor }, profile, season, nick] = await Promise.all([
     getFeed(session, { weaponId: arma }),
     getProfileSummary(session),
     getActiveSeason(),
+    getNicknameStatus(session),
   ]);
 
   const leaderboard = season
@@ -60,6 +62,7 @@ export default async function ComunidadPage({
 
   return (
     <LoginProvider>
+      {nick && <NicknameGate needsNickname={nick.needsNickname} discordName={nick.discordName} />}
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
         <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)_300px]">
           {/* Sidebar izquierdo — perfil */}

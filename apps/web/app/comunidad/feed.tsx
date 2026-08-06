@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -15,6 +15,30 @@ import {
 import { COMMENT_MAX, type FeedComment, type FeedPost } from '@/lib/community';
 import { useLogin } from './login-gate';
 import { VideoPlayer } from './video-player';
+import { MentionInput } from './mention-input';
+
+/** Resalta los @usuario dentro del cuerpo de un comentario. */
+function renderMentions(body: string) {
+  return body.split(/(@[\w.]+)/g).map((part, i) =>
+    part.startsWith('@') ? (
+      <span key={i} className="font-bold text-primary">
+        {part}
+      </span>
+    ) : (
+      <Fragment key={i}>{part}</Fragment>
+    ),
+  );
+}
+
+/** Etiqueta de día para agrupar el feed: HOY / AYER / "04 AGO". */
+function dayLabel(iso: string): string {
+  const d = new Date(iso);
+  const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((startOfDay(new Date()) - startOfDay(d)) / 86400000);
+  if (diff <= 0) return 'HOY';
+  if (diff === 1) return 'AYER';
+  return d.toLocaleDateString('es', { day: '2-digit', month: 'short' }).toUpperCase();
+}
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -133,15 +157,21 @@ export function Feed({
 
   return (
     <div className="space-y-8">
-      {posts.map((post) => (
-        <PostCard
-          key={post.id}
-          post={post}
-          isAuthed={isAuthed}
-          onPatch={patch}
-          onDrop={drop}
-        />
-      ))}
+      {posts.map((post, i) => {
+        const label = dayLabel(post.createdAt);
+        const showHeader = i === 0 || label !== dayLabel(posts[i - 1]!.createdAt);
+        return (
+          <Fragment key={post.id}>
+            {showHeader && (
+              <div className="flex items-center gap-3 pt-2 first:pt-0">
+                <span className="tag-tactical whitespace-nowrap text-primary">// {label}</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            )}
+            <PostCard post={post} isAuthed={isAuthed} onPatch={patch} onDrop={drop} />
+          </Fragment>
+        );
+      })}
 
       {cursor && (
         <>
@@ -445,7 +475,9 @@ function PostCard({
                         {timeAgo(c.createdAt)}
                       </span>
                     </div>
-                    <p className="mt-0.5 break-words text-sm text-foreground/90">{c.body}</p>
+                    <p className="mt-0.5 break-words text-sm text-foreground/90">
+                      {renderMentions(c.body)}
+                    </p>
                   </div>
                   {c.canDelete && (
                     <button
@@ -463,11 +495,12 @@ function PostCard({
 
           {isAuthed ? (
             <form onSubmit={submitComment} className="mt-4 flex items-center gap-2">
-              <input
+              <MentionInput
                 value={draft}
-                onChange={(e) => setDraft(e.target.value.slice(0, COMMENT_MAX))}
-                placeholder="Escribí un comentario…"
-                className="min-w-0 flex-1 border-2 border-border bg-input px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-border-strong"
+                onChange={setDraft}
+                maxLength={COMMENT_MAX}
+                placeholder="Escribí un comentario… (@ para etiquetar)"
+                className="w-full border-2 border-border bg-input px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-border-strong"
               />
               <button
                 type="submit"
