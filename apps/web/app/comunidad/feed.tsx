@@ -17,13 +17,13 @@ import { useLogin } from './login-gate';
 import { VideoPlayer } from './video-player';
 import { MentionInput } from './mention-input';
 
-/** Resalta los @usuario dentro del cuerpo de un comentario. */
+/** Resalta los @usuario dentro del cuerpo de un comentario y los enlaza al perfil. */
 function renderMentions(body: string) {
   return body.split(/(@[\w.]+)/g).map((part, i) =>
     part.startsWith('@') ? (
-      <span key={i} className="font-bold text-primary">
+      <Link key={i} href={`/u/${part.slice(1)}`} className="font-bold text-primary hover:underline">
         {part}
-      </span>
+      </Link>
     ) : (
       <Fragment key={i}>{part}</Fragment>
     ),
@@ -326,7 +326,12 @@ function PostCard({
       <header className="flex items-center gap-3 border-b border-border px-4 py-3">
         <Avatar url={post.author.avatarUrl} name={post.author.name} />
         <div className="min-w-0 flex-1">
-          <p className="display truncate text-base tracking-wide">{post.author.name}</p>
+          <Link
+            href={`/u/${post.author.username}`}
+            className="display block truncate text-base tracking-wide transition hover:text-primary"
+          >
+            {post.author.name}
+          </Link>
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
             {timeAgo(post.createdAt)}
           </p>
@@ -470,7 +475,12 @@ function PostCard({
                   <Avatar url={c.author.avatarUrl} name={c.author.name} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="display text-sm tracking-wide">{c.author.name}</span>
+                      <Link
+                        href={`/u/${c.author.username}`}
+                        className="display text-sm tracking-wide transition hover:text-primary"
+                      >
+                        {c.author.name}
+                      </Link>
                       <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
                         {timeAgo(c.createdAt)}
                       </span>

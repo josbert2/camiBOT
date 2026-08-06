@@ -182,6 +182,67 @@ export async function getProfileSummary(
   return { author: toAuthor(user), postCount, likesReceived };
 }
 
+export type PublicClip = {
+  id: string;
+  slug: string | null;
+  caption: string | null;
+  posterUrl: string | null;
+  likes: number;
+  comments: number;
+};
+
+export type PublicProfile = {
+  author: PostAuthor;
+  userId: string;
+  postCount: number;
+  likesReceived: number;
+  clips: PublicClip[];
+};
+
+/** Perfil público de un usuario por su username. null si no existe. */
+export async function getPublicProfile(username: string): Promise<PublicProfile | null> {
+  // username no es unique en el schema, así que findFirst.
+  const user = await prisma.user.findFirst({
+    where: { username },
+    select: authorSelect,
+  });
+  if (!user) return null;
+
+  const [postCount, likesReceived, clips] = await Promise.all([
+    prisma.post.count({ where: { authorId: user.id, removedAt: null, status: 'PUBLISHED' } }),
+    prisma.postLike.count({
+      where: { post: { authorId: user.id, removedAt: null, status: 'PUBLISHED' } },
+    }),
+    prisma.post.findMany({
+      where: { authorId: user.id, removedAt: null, status: 'PUBLISHED' },
+      orderBy: { createdAt: 'desc' },
+      take: 60,
+      select: {
+        id: true,
+        slug: true,
+        caption: true,
+        posterKey: true,
+        _count: { select: { likes: true, comments: { where: { removedAt: null } } } },
+      },
+    }),
+  ]);
+
+  return {
+    author: toAuthor(user),
+    userId: user.id,
+    postCount,
+    likesReceived,
+    clips: clips.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      caption: c.caption,
+      posterUrl: c.posterKey ? publicUrl(c.posterKey) : null,
+      likes: c._count.likes,
+      comments: c._count.comments,
+    })),
+  };
+}
+
 export async function getFeed(
   session: Session | null | undefined,
   opts: { weaponId?: string; take?: number; cursor?: string } = {},

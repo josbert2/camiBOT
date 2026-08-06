@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { RankingIcon, FavouriteIcon, VideoReplayIcon } from '@hugeicons/core-free-icons';
 import type { LeaderboardRow } from '@/lib/season';
@@ -30,10 +31,11 @@ export function RankingRail({
       ) : (
         <ol className="space-y-1">
           {rows.map((r) => (
-            <li
-              key={r.user.id}
-              className="flex items-center gap-3 border-l-2 border-transparent px-1 py-1.5"
-            >
+            <li key={r.user.id}>
+              <Link
+                href={`/u/${r.user.username}`}
+                className="flex items-center gap-3 border-l-2 border-transparent px-1 py-1.5 transition hover:border-primary hover:bg-card"
+              >
               <span
                 className={`display w-5 shrink-0 text-center text-base leading-none ${
                   r.rank === 1
@@ -77,6 +79,7 @@ export function RankingRail({
                   {r.clips}
                 </span>
               </span>
+              </Link>
             </li>
           ))}
         </ol>
