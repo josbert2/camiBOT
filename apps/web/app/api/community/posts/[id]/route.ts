@@ -67,7 +67,7 @@ export async function DELETE(
 
   const post = await prisma.post.findUnique({
     where: { id },
-    select: { id: true, authorId: true, videoKey: true, posterKey: true, status: true },
+    select: { id: true, authorId: true, videoKey: true, imageKey: true, posterKey: true, status: true },
   });
 
   if (!post || post.status === 'REMOVED') {
@@ -92,7 +92,7 @@ export async function DELETE(
   // que ya nadie puede ver. Best-effort: si falla, el post ya esta oculto.
   if (isR2Configured()) {
     try {
-      await deleteObjects([post.videoKey, post.posterKey ?? '']);
+      await deleteObjects([post.videoKey ?? '', post.imageKey ?? '', post.posterKey ?? '']);
     } catch (err) {
       console.error('[community] no se pudieron borrar los objetos de R2', err);
     }

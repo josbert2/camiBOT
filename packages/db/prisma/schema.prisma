@@ -424,6 +424,12 @@ enum PostStatus {
   REMOVED
 }
 
+enum PostKind {
+  VIDEO
+  PHOTO
+  TEXT
+}
+
 model Post {
   id       String     @id @default(cuid())
   authorId String
@@ -434,10 +440,16 @@ model Post {
   // Slug opcional para compartir con una URL propia: /c/<slug>. Unico.
   slug     String?    @unique
   status   PostStatus @default(PUBLISHED)
+  // Tipo de post: clip de video, foto o texto (discusión).
+  kind     PostKind   @default(VIDEO)
+  // Post anónimo (para el "tribunal": reportar sin exponerse). El autor real
+  // se guarda igual para moderación, pero no se expone al cliente.
+  anonymous Boolean   @default(false)
 
   // Media en R2. Guardamos la key, no la URL — el host publico se resuelve
   // en runtime desde R2_PUBLIC_URL, asi se puede mover el bucket/dominio.
-  videoKey    String
+  videoKey    String?
+  imageKey    String?
   posterKey   String?
   durationSec Int?
   width       Int?
@@ -463,6 +475,7 @@ model Post {
   comments PostComment[]
 
   @@index([status, createdAt])
+  @@index([kind, status, createdAt])
   @@index([authorId])
   @@index([weaponId])
   @@index([guildId])

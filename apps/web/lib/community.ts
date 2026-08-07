@@ -222,6 +222,7 @@ export async function getPublicProfile(username: string): Promise<PublicProfile 
         slug: true,
         caption: true,
         posterKey: true,
+        imageKey: true,
         _count: { select: { likes: true, comments: { where: { removedAt: null } } } },
       },
     }),
@@ -236,7 +237,7 @@ export async function getPublicProfile(username: string): Promise<PublicProfile 
       id: c.id,
       slug: c.slug,
       caption: c.caption,
-      posterUrl: c.posterKey ? publicUrl(c.posterKey) : null,
+      posterUrl: c.posterKey ? publicUrl(c.posterKey) : c.imageKey ? publicUrl(c.imageKey) : null,
       likes: c._count.likes,
       comments: c._count.comments,
     })),
@@ -252,6 +253,7 @@ export async function getFeed(
   const rows = await prisma.post.findMany({
     where: {
       status: 'PUBLISHED',
+      kind: 'VIDEO',
       ...(opts.weaponId ? { weaponId: opts.weaponId } : {}),
     },
     orderBy: { createdAt: 'desc' },
@@ -282,7 +284,7 @@ export async function getFeed(
       id: p.id,
       slug: p.slug,
       caption: p.caption,
-      videoUrl: publicUrl(p.videoKey),
+      videoUrl: publicUrl(p.videoKey ?? ''),
       posterUrl: p.posterKey ? publicUrl(p.posterKey) : null,
       width: p.width,
       height: p.height,
@@ -292,6 +294,91 @@ export async function getFeed(
       gameMode: p.gameMode,
       createdAt: p.createdAt.toISOString(),
       author: toAuthor(p.author),
+      likeCount: p._count.likes,
+      commentCount: p._count.comments,
+      likedByMe: Array.isArray(likes) && likes.length > 0,
+      canDelete: canDelete(session, p.authorId),
+      comments: p.comments.map((c) => ({
+        id: c.id,
+        body: c.body,
+        createdAt: c.createdAt.toISOString(),
+        author: toAuthor(c.author),
+        canDelete: canDelete(session, c.authorId),
+      })),
+    };
+  });
+
+  return {
+    posts,
+    nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+  };
+}
+
+export type DiscussionPost = {
+  id: string;
+  slug: string | null;
+  kind: 'PHOTO' | 'TEXT';
+  anonymous: boolean;
+  body: string | null;
+  imageUrl: string | null;
+  width: number | null;
+  height: number | null;
+  createdAt: string;
+  author: PostAuthor;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
+  canDelete: boolean;
+  comments: FeedComment[];
+};
+
+/** Autor placeholder para posts anónimos: no se expone la identidad real. */
+const ANON_AUTHOR: PostAuthor = { id: 'anon', name: 'Anónimo', username: '', avatarUrl: null };
+
+/** Feed de discusión: posts de foto o texto (kind PHOTO/TEXT). */
+export async function getDiscussionFeed(
+  session: Session | null | undefined,
+  opts: { take?: number; cursor?: string } = {},
+): Promise<{ posts: DiscussionPost[]; nextCursor: string | null }> {
+  const take = opts.take ?? FEED_PAGE_SIZE;
+
+  const rows = await prisma.post.findMany({
+    where: { status: 'PUBLISHED', kind: { in: ['PHOTO', 'TEXT'] } },
+    orderBy: { createdAt: 'desc' },
+    take: take + 1,
+    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
+    include: {
+      author: { select: authorSelect },
+      _count: { select: { likes: true, comments: { where: { removedAt: null } } } },
+      likes: session?.user?.id
+        ? { where: { userId: session.user.id }, select: { id: true } }
+        : false,
+      comments: {
+        where: { removedAt: null },
+        orderBy: { createdAt: 'asc' },
+        take: 3,
+        include: { author: { select: authorSelect } },
+      },
+    },
+  });
+
+  const hasMore = rows.length > take;
+  const page = hasMore ? rows.slice(0, take) : rows;
+
+  const posts = page.map((p): DiscussionPost => {
+    const likes = p.likes as { id: string }[] | undefined;
+    return {
+      id: p.id,
+      slug: p.slug,
+      kind: p.kind === 'PHOTO' ? 'PHOTO' : 'TEXT',
+      anonymous: p.anonymous,
+      body: p.caption,
+      imageUrl: p.imageKey ? publicUrl(p.imageKey) : null,
+      width: p.width,
+      height: p.height,
+      createdAt: p.createdAt.toISOString(),
+      // En posts anónimos no se expone la identidad real al cliente.
+      author: p.anonymous ? ANON_AUTHOR : toAuthor(p.author),
       likeCount: p._count.likes,
       commentCount: p._count.comments,
       likedByMe: Array.isArray(likes) && likes.length > 0,

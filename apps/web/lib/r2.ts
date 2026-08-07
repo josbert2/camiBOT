@@ -27,9 +27,11 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
 export const MAX_POSTER_BYTES = 2 * 1024 * 1024; // 2 MB
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'] as const;
 export const ALLOWED_POSTER_TYPES = ['image/jpeg', 'image/webp'] as const;
+export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/webp', 'image/png', 'image/gif'] as const;
 
 const EXT_BY_TYPE: Record<string, string> = {
   'video/mp4': 'mp4',
@@ -37,6 +39,8 @@ const EXT_BY_TYPE: Record<string, string> = {
   'video/quicktime': 'mov',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
+  'image/png': 'png',
+  'image/gif': 'gif',
 };
 
 function env(name: string): string | null {
@@ -98,7 +102,11 @@ export function publicUrl(key: string): string {
  * Key con prefijo por usuario y sufijo aleatorio. El userId adelante hace
  * trivial auditar o borrar todo lo de una persona desde el dashboard de R2.
  */
-export function buildKey(userId: string, kind: 'video' | 'poster', contentType: string): string {
+export function buildKey(
+  userId: string,
+  kind: 'video' | 'poster' | 'image',
+  contentType: string,
+): string {
   const ext = EXT_BY_TYPE[contentType] ?? 'bin';
   const rand = crypto.randomUUID();
   return `community/${userId}/${rand}-${kind}.${ext}`;

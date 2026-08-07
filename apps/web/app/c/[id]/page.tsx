@@ -17,15 +17,20 @@ const getSharePost = cache(async (id: string) => {
     where: { removedAt: null, status: 'PUBLISHED', OR: [{ id }, { slug: id }] },
     select: {
       id: true,
+      kind: true,
+      anonymous: true,
       caption: true,
       videoKey: true,
+      imageKey: true,
       posterKey: true,
       width: true,
       height: true,
       weaponName: true,
       gameMode: true,
       createdAt: true,
-      author: { select: { discordId: true, username: true, globalName: true, avatar: true } },
+      author: {
+        select: { discordId: true, username: true, globalName: true, nickname: true, avatar: true },
+      },
       _count: { select: { likes: true, comments: true } },
     },
   });
@@ -52,36 +57,46 @@ export async function generateMetadata({
   const post = await getSharePost(id);
   if (!post) return { title: 'Clip no encontrado — Tournify' };
 
-  const author = post.author.globalName ?? post.author.username;
-  const title = post.caption?.trim() || `Play de ${author}`;
-  const description = post.caption?.trim()
-    ? `${author} en la comunidad de Tournify`
-    : `Mirá la jugada de ${author} en la comunidad de Tournify.`;
+  const author = post.anonymous
+    ? 'Anónimo'
+    : (post.author.nickname ?? post.author.globalName ?? post.author.username);
+  const title = post.caption?.trim() || `Post de ${author}`;
+  const description = `${author} en la comunidad de Tournify`;
+
   const poster = post.posterKey ? publicUrl(post.posterKey) : undefined;
-  const video = publicUrl(post.videoKey);
+  const image = post.imageKey ? publicUrl(post.imageKey) : undefined;
+
+  if (post.kind === 'VIDEO' && post.videoKey) {
+    return {
+      title: `${title} — Tournify`,
+      description,
+      openGraph: {
+        title,
+        description,
+        type: 'video.other',
+        images: poster ? [{ url: poster }] : undefined,
+        videos: [
+          {
+            url: publicUrl(post.videoKey),
+            type: videoMime(post.videoKey),
+            width: post.width ?? undefined,
+            height: post.height ?? undefined,
+          },
+        ],
+      },
+      twitter: { card: 'summary_large_image', title, description, images: poster ? [poster] : undefined },
+    };
+  }
 
   return {
     title: `${title} — Tournify`,
     description,
-    openGraph: {
-      title,
-      description,
-      type: 'video.other',
-      images: poster ? [{ url: poster }] : undefined,
-      videos: [
-        {
-          url: video,
-          type: videoMime(post.videoKey),
-          width: post.width ?? undefined,
-          height: post.height ?? undefined,
-        },
-      ],
-    },
+    openGraph: { title, description, images: image ? [{ url: image }] : undefined },
     twitter: {
-      card: 'summary_large_image',
+      card: image ? 'summary_large_image' : 'summary',
       title,
       description,
-      images: poster ? [poster] : undefined,
+      images: image ? [image] : undefined,
     },
   };
 }
@@ -91,8 +106,10 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
   const post = await getSharePost(id);
   if (!post) notFound();
 
-  const author = post.author.globalName ?? post.author.username;
-  const avatar = discordAvatarUrl(post.author.discordId, post.author.avatar);
+  const author = post.anonymous
+    ? 'Anónimo'
+    : (post.author.nickname ?? post.author.globalName ?? post.author.username);
+  const avatar = post.anonymous ? null : discordAvatarUrl(post.author.discordId, post.author.avatar);
   const comments = await getComments(null, post.id);
 
   return (
@@ -141,15 +158,28 @@ export default async function SharePage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        <div className="mt-3">
-          <VideoPlayer
-            src={publicUrl(post.videoKey)}
-            poster={post.posterKey ? publicUrl(post.posterKey) : undefined}
-            autoPlay
-          />
-        </div>
+        {post.kind === 'VIDEO' && post.videoKey && (
+          <div className="mt-3">
+            <VideoPlayer
+              src={publicUrl(post.videoKey)}
+              poster={post.posterKey ? publicUrl(post.posterKey) : undefined}
+              autoPlay
+            />
+          </div>
+        )}
 
-        <div className="flex items-center gap-4 border-t border-border px-4 py-3 text-xs uppercase tracking-widest text-muted-foreground">
+        {post.kind === 'PHOTO' && post.imageKey && (
+          <div className="mt-3 bg-black">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={publicUrl(post.imageKey)}
+              alt=""
+              className="max-h-[75vh] w-full object-contain"
+            />
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center gap-4 border-t border-border px-4 py-3 text-xs uppercase tracking-widest text-muted-foreground">
           <span className="flex items-center gap-1.5 text-danger">
             <HugeiconsIcon icon={FavouriteIcon} className="h-4 w-4" />
             {post._count.likes}

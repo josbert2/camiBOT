@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/auth';
 import {
+  ALLOWED_IMAGE_TYPES,
   ALLOWED_POSTER_TYPES,
   ALLOWED_VIDEO_TYPES,
+  MAX_IMAGE_BYTES,
   MAX_POSTER_BYTES,
   MAX_VIDEO_BYTES,
   buildKey,
@@ -15,7 +17,7 @@ import {
 const schema = z.object({
   contentType: z.string().min(1),
   contentLength: z.number().int().positive(),
-  kind: z.enum(['video', 'poster']),
+  kind: z.enum(['video', 'poster', 'image']),
 });
 
 export async function POST(req: Request) {
@@ -39,7 +41,11 @@ export async function POST(req: Request) {
   const { contentType, contentLength, kind } = parsed.data;
 
   const allowed: readonly string[] =
-    kind === 'video' ? ALLOWED_VIDEO_TYPES : ALLOWED_POSTER_TYPES;
+    kind === 'video'
+      ? ALLOWED_VIDEO_TYPES
+      : kind === 'image'
+        ? ALLOWED_IMAGE_TYPES
+        : ALLOWED_POSTER_TYPES;
   if (!allowed.includes(contentType)) {
     return NextResponse.json(
       { error: `Formato no soportado. Aceptamos: ${allowed.join(', ')}` },
@@ -47,7 +53,8 @@ export async function POST(req: Request) {
     );
   }
 
-  const max = kind === 'video' ? MAX_VIDEO_BYTES : MAX_POSTER_BYTES;
+  const max =
+    kind === 'video' ? MAX_VIDEO_BYTES : kind === 'image' ? MAX_IMAGE_BYTES : MAX_POSTER_BYTES;
   if (contentLength > max) {
     return NextResponse.json(
       { error: `El archivo supera el máximo de ${Math.round(max / 1024 / 1024)} MB.` },

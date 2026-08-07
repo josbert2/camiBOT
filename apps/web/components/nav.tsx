@@ -10,6 +10,7 @@ import {
   Login03Icon,
   GunIcon,
   UserGroupIcon,
+  Message01Icon,
 } from '@hugeicons/core-free-icons';
 import { auth, signOut } from '@/auth';
 import { isAdmin } from '@/lib/admin';
@@ -35,6 +36,9 @@ export async function Nav() {
           <NavLink href="/comunidad" icon={UserGroupIcon}>
             Comunidad
           </NavLink>
+          <NavLink href="/discusion" icon={Message01Icon}>
+            Discusión
+          </NavLink>
           <NavLink href="/comandos" icon={TerminalIcon}>
             Ops
           </NavLink>
@@ -55,6 +59,7 @@ export async function Nav() {
             <NavLink href="/players" icon={RankingIcon} small />
             <NavLink href="/wz" icon={GunIcon} small />
             <NavLink href="/comunidad" icon={UserGroupIcon} small />
+            <NavLink href="/discusion" icon={Message01Icon} small />
             <NavLink href="/comandos" icon={TerminalIcon} small />
           </div>
 
