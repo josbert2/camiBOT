@@ -72,10 +72,26 @@ export function VideoPlayer({
   }, []);
 
   const toggleFullscreen = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    if (document.fullscreenElement) document.exitFullscreen();
-    else el.requestFullscreen?.();
+    const el = containerRef.current as
+      | (HTMLDivElement & { webkitRequestFullscreen?: () => void })
+      | null;
+    const video = videoRef.current as
+      | (HTMLVideoElement & { webkitEnterFullscreen?: () => void })
+      | null;
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+      return;
+    }
+    if (el?.requestFullscreen) {
+      // Android / desktop: pantalla completa del contenedor (controles propios).
+      el.requestFullscreen().catch(() => video?.webkitEnterFullscreen?.());
+    } else if (el?.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+    } else if (video?.webkitEnterFullscreen) {
+      // iOS Safari: sólo el <video> va a fullscreen (con controles nativos).
+      video.webkitEnterFullscreen();
+    }
   }, []);
 
   function seekFromClientX(clientX: number) {
