@@ -9,6 +9,7 @@ import {
   VolumeLowIcon,
   VolumeMute02Icon,
   FullScreenIcon,
+  Download04Icon,
 } from '@hugeicons/core-free-icons';
 
 function fmt(s: number): string {
@@ -46,6 +47,29 @@ export function VideoPlayer({
   const [started, setStarted] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const download = useCallback(async () => {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(src);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = src.split('/').pop()?.split('?')[0] || 'clip.mp4';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // Fallback (ej. iOS): abrir en pestaña nueva para guardar manualmente.
+      window.open(src, '_blank');
+    } finally {
+      setDownloading(false);
+    }
+  }, [src, downloading]);
 
   const pct = duration > 0 ? (current / duration) * 100 : 0;
   const volIcon = muted || volume === 0 ? VolumeMute02Icon : volume < 0.5 ? VolumeLowIcon : VolumeHighIcon;
@@ -225,6 +249,17 @@ export function VideoPlayer({
               className="h-1 w-0 cursor-pointer opacity-0 accent-accent transition-all duration-200 group-hover/vol:w-16 group-hover/vol:opacity-100"
             />
           </div>
+
+          <button
+            type="button"
+            onClick={download}
+            disabled={downloading}
+            aria-label="Descargar"
+            title="Descargar"
+            className="text-foreground/90 transition hover:text-accent disabled:opacity-50"
+          >
+            <HugeiconsIcon icon={Download04Icon} className="h-5 w-5" />
+          </button>
 
           <button
             type="button"
