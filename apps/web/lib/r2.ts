@@ -1,4 +1,12 @@
-import { S3Client, DeleteObjectsCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  DeleteObjectsCommand,
+  PutObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
@@ -111,6 +119,59 @@ export async function presignUpload(
       ContentLength: contentLength,
     }),
     { expiresIn: 300 },
+  );
+}
+
+/** El userId va en el prefijo de la key: así validamos que nadie toque lo ajeno. */
+export function keyBelongsToUser(key: string, userId: string): boolean {
+  return key.startsWith(`community/${userId}/`);
+}
+
+/** Tamaño de cada parte del multipart (8 MB). R2 exige >=5 MB por parte. */
+export const MULTIPART_PART_SIZE = 8 * 1024 * 1024;
+
+/** Arranca una subida multipart y devuelve el uploadId. */
+export async function createMultipart(key: string, contentType: string): Promise<string> {
+  const out = await getClient().send(
+    new CreateMultipartUploadCommand({ Bucket: bucket(), Key: key, ContentType: contentType }),
+  );
+  if (!out.UploadId) throw new Error('R2 no devolvió UploadId.');
+  return out.UploadId;
+}
+
+/** URL prefirmada para subir una parte (PUT). */
+export async function presignPart(
+  key: string,
+  uploadId: string,
+  partNumber: number,
+): Promise<string> {
+  return getSignedUrl(
+    getClient(),
+    new UploadPartCommand({ Bucket: bucket(), Key: key, UploadId: uploadId, PartNumber: partNumber }),
+    { expiresIn: 3600 },
+  );
+}
+
+/** Cierra la subida multipart ensamblando las partes. */
+export async function completeMultipart(
+  key: string,
+  uploadId: string,
+  parts: { PartNumber: number; ETag: string }[],
+): Promise<void> {
+  await getClient().send(
+    new CompleteMultipartUploadCommand({
+      Bucket: bucket(),
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: { Parts: parts.sort((a, b) => a.PartNumber - b.PartNumber) },
+    }),
+  );
+}
+
+/** Aborta una subida multipart (best-effort, para no dejar basura). */
+export async function abortMultipart(key: string, uploadId: string): Promise<void> {
+  await getClient().send(
+    new AbortMultipartUploadCommand({ Bucket: bucket(), Key: key, UploadId: uploadId }),
   );
 }
 

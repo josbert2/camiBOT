@@ -11,6 +11,7 @@ import {
   ScissorIcon,
 } from '@hugeicons/core-free-icons';
 import { CAPTION_MAX, GAME_MODES } from '@/lib/community';
+import { uploadVideoResilient } from '@/lib/upload';
 import { useLogin } from './login-gate';
 import { VideoTrimmer } from './video-trimmer';
 
@@ -139,6 +140,7 @@ export function Composer({
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
+  const [uploadPct, setUploadPct] = useState<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
@@ -176,6 +178,7 @@ export function Composer({
     setTrimStart(0);
     setTrimEnd(0);
     setVideoDuration(0);
+    setUploadPct(null);
     setError(null);
     if (inputRef.current) inputRef.current.value = '';
   }
@@ -228,8 +231,11 @@ export function Composer({
         durationSec = Math.round(trimEnd - trimStart);
       }
 
+      // Subida resiliente por partes (sobrevive cortes de red, con progreso).
       setBusy('Subiendo el video…');
-      const videoKey = await uploadToR2(videoBlob, 'video');
+      setUploadPct(0);
+      const videoKey = await uploadVideoResilient(videoBlob, (r) => setUploadPct(r));
+      setUploadPct(null);
 
       let posterKey: string | null = null;
       if (picked.poster) {
@@ -270,6 +276,7 @@ export function Composer({
       setError(err instanceof Error ? err.message : 'Algo salió mal.');
     } finally {
       setBusy(null);
+      setUploadPct(null);
     }
   }
 
@@ -435,6 +442,21 @@ export function Composer({
               ))}
             </select>
           </label>
+
+          {uploadPct !== null && (
+            <div>
+              <div className="mb-1 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
+                <span>Subiendo — no cierres esto</span>
+                <span className="tabular-nums text-primary">{Math.round(uploadPct * 100)}%</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden border border-border bg-muted">
+                <div
+                  className="h-full bg-primary transition-[width] duration-200"
+                  style={{ width: `${Math.round(uploadPct * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-4">
             <span className="text-xs uppercase tracking-widest text-muted-foreground">
