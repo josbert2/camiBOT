@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@camibot/db';
+import { auth } from '@/auth';
+import { TournamentRegister } from './register';
 import { BracketSVG } from '@/components/bracket-svg';
 import { StandingsTable } from '@/components/standings-table';
 import { SwissStandingsTable } from '@/components/swiss-standings-table';
@@ -74,6 +76,14 @@ export default async function TournamentPage({ params }: PageProps) {
 
   if (!tournament) notFound();
 
+  const session = await auth();
+  const myId = session?.user?.id;
+  const isRegistered = !!myId && tournament.participants.some((p) => p.userId === myId);
+  const isFull = tournament.participants.length >= tournament.maxParticipants;
+  const regOpen =
+    tournament.status === 'REGISTRATION' &&
+    (!tournament.registrationClosesAt || new Date() < tournament.registrationClosesAt);
+
   const winner =
     tournament.status === 'COMPLETED'
       ? tournament.participants.find((p) => p.status === 'WINNER')
@@ -107,6 +117,17 @@ export default async function TournamentPage({ params }: PageProps) {
             </div>
           </div>
         )}
+
+        <div className="mt-6">
+          <TournamentRegister
+            tournamentId={tournament.id}
+            isAuthed={!!myId}
+            regOpen={regOpen}
+            isFull={isFull}
+            isRegistered={isRegistered}
+            teamSize={tournament.teamSize}
+          />
+        </div>
       </header>
 
       {/* Stats grid */}
