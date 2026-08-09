@@ -140,6 +140,12 @@ export default async function AdminPage({ searchParams }: SearchParamsP) {
             Temporadas
           </Link>
           <Link
+            href="/admin/anonimos"
+            className="border-2 border-border-strong px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-foreground hover:text-background"
+          >
+            Anónimos
+          </Link>
+          <Link
             href="/dashboard"
             className="border-2 border-border-strong px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-foreground hover:text-background"
           >
