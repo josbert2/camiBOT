@@ -7,6 +7,7 @@ import { discordAvatarUrl } from '@/lib/community';
 import { generateSingleElim, generateDoubleElim } from '@camibot/core';
 import { TournamentRegister } from './register';
 import { CopyLink } from './copy-link';
+import { AdminCommands } from './admin-commands';
 import { BracketSVG } from '@/components/bracket-svg';
 import { StandingsTable } from '@/components/standings-table';
 import { SwissStandingsTable } from '@/components/swiss-standings-table';
@@ -188,6 +189,8 @@ export default async function TournamentPage({ params }: PageProps) {
           <CopyLink path={`/t/${tournament.id}`} label="Copiar link" />
         </div>
       </header>
+
+      {isAdmin(session) && <AdminCommands slug={tournament.slug} />}
 
       {/* Stats grid */}
       <div className="mb-8 grid grid-cols-2 gap-px border-2 border-border bg-border md:grid-cols-4">
