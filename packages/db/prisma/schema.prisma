@@ -44,6 +44,7 @@ model User {
   seasonsCreated Season[]    @relation("SeasonCreator")
   notifications      Notification[] @relation("NotifUser")
   actedNotifications Notification[] @relation("NotifActor")
+  verdicts           Verdict[]
 
   @@index([discordId])
 }
@@ -475,6 +476,7 @@ model Post {
   guild    Guild?        @relation(fields: [guildId], references: [id], onDelete: SetNull)
   likes    PostLike[]
   comments PostComment[]
+  verdicts Verdict[]
 
   @@index([status, createdAt])
   @@index([kind, status, createdAt])
@@ -525,6 +527,26 @@ enum NotificationType {
   LIKE
   COMMENT
   MENTION
+}
+
+enum VerdictVote {
+  GUILTY
+  INNOCENT
+}
+
+/** Voto del "tribunal" sobre un post de discusión: culpable o inocente. */
+model Verdict {
+  id        String      @id @default(cuid())
+  postId    String
+  userId    String
+  vote      VerdictVote
+  createdAt DateTime    @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
 }
 
 /** Notificación in-app: like, comentario o mención hacia un usuario. */

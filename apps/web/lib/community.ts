@@ -330,6 +330,9 @@ export type DiscussionPost = {
   likedByMe: boolean;
   canDelete: boolean;
   comments: FeedComment[];
+  guilty: number;
+  innocent: number;
+  myVerdict: 'GUILTY' | 'INNOCENT' | null;
 };
 
 /** Autor placeholder para posts anónimos: no se expone la identidad real. */
@@ -353,6 +356,7 @@ export async function getDiscussionFeed(
       likes: session?.user?.id
         ? { where: { userId: session.user.id }, select: { id: true } }
         : false,
+      verdicts: { select: { userId: true, vote: true } },
       comments: {
         where: { removedAt: null },
         orderBy: { createdAt: 'asc' },
@@ -362,11 +366,15 @@ export async function getDiscussionFeed(
     },
   });
 
+  const myId = session?.user?.id;
   const hasMore = rows.length > take;
   const page = hasMore ? rows.slice(0, take) : rows;
 
   const posts = page.map((p): DiscussionPost => {
     const likes = p.likes as { id: string }[] | undefined;
+    const verdicts = p.verdicts as { userId: string; vote: 'GUILTY' | 'INNOCENT' }[];
+    const guilty = verdicts.filter((v) => v.vote === 'GUILTY').length;
+    const myVerdict = myId ? (verdicts.find((v) => v.userId === myId)?.vote ?? null) : null;
     return {
       id: p.id,
       slug: p.slug,
@@ -390,6 +398,9 @@ export async function getDiscussionFeed(
         author: toAuthor(c.author),
         canDelete: canDelete(session, c.authorId),
       })),
+      guilty,
+      innocent: verdicts.length - guilty,
+      myVerdict,
     };
   });
 

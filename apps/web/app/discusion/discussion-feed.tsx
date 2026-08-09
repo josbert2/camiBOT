@@ -148,6 +148,24 @@ function DiscussionCard({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shared, setShared] = useState(false);
+  const [guilty, setGuilty] = useState(post.guilty);
+  const [innocent, setInnocent] = useState(post.innocent);
+  const [myVerdict, setMyVerdict] = useState(post.myVerdict);
+
+  async function vote(v: 'GUILTY' | 'INNOCENT') {
+    if (!isAuthed) return openLogin();
+    const res = await fetch(`/api/community/posts/${post.id}/verdict`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ vote: v }),
+    });
+    if (res.ok) {
+      const j = await res.json();
+      setGuilty(j.guilty);
+      setInnocent(j.innocent);
+      setMyVerdict(j.myVerdict);
+    }
+  }
 
   async function toggleLike() {
     if (!isAuthed) return openLogin();
@@ -270,6 +288,42 @@ function DiscussionCard({
           <img src={post.imageUrl} alt="" className="max-h-[70vh] w-full object-contain" />
         </div>
       )}
+
+      {/* Veredicto del tribunal */}
+      <div className="border-t border-border px-4 py-3">
+        <div className="mb-2 tag-tactical">// VEREDICTO</div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => vote('GUILTY')}
+            className={`flex-1 border-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest transition ${
+              myVerdict === 'GUILTY'
+                ? 'border-danger bg-danger/15 text-danger'
+                : 'border-border text-muted-foreground hover:border-danger hover:text-danger'
+            }`}
+          >
+            Culpable · {guilty}
+          </button>
+          <button
+            onClick={() => vote('INNOCENT')}
+            className={`flex-1 border-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest transition ${
+              myVerdict === 'INNOCENT'
+                ? 'border-success bg-success/15 text-success'
+                : 'border-border text-muted-foreground hover:border-success hover:text-success'
+            }`}
+          >
+            Inocente · {innocent}
+          </button>
+        </div>
+        {guilty + innocent > 0 && (
+          <div className="mt-2 flex h-1.5 overflow-hidden bg-muted">
+            <div className="bg-danger" style={{ width: `${(guilty / (guilty + innocent)) * 100}%` }} />
+            <div
+              className="bg-success"
+              style={{ width: `${(innocent / (guilty + innocent)) * 100}%` }}
+            />
+          </div>
+        )}
+      </div>
 
       <div className="mt-3 flex items-center gap-1 border-t border-border px-2 py-2">
         <button
