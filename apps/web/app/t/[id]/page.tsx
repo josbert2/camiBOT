@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@camibot/db';
 import { auth } from '@/auth';
+import { isAdmin } from '@/lib/admin';
+import { generateSingleElim, generateDoubleElim } from '@camibot/core';
 import { TournamentRegister } from './register';
 import { BracketSVG } from '@/components/bracket-svg';
 import { StandingsTable } from '@/components/standings-table';
@@ -84,6 +86,60 @@ export default async function TournamentPage({ params }: PageProps) {
     tournament.status === 'REGISTRATION' &&
     (!tournament.registrationClosesAt || new Date() < tournament.registrationClosesAt);
 
+  // Preview de la llave: SOLO admins, mientras el registro sigue abierto y aún
+  // no se generó el bracket real. Se calcula en memoria (no toca la DB).
+  const canPreview =
+    isAdmin(session) &&
+    tournament.status === 'REGISTRATION' &&
+    tournament.matches.length === 0 &&
+    tournament.participants.length >= 2 &&
+    (tournament.format === 'SINGLE_ELIMINATION' || tournament.format === 'DOUBLE_ELIMINATION');
+
+  let previewMatches:
+    | {
+        id: string;
+        round: number;
+        matchNumber: number;
+        participant1Id: string | null;
+        participant2Id: string | null;
+        winnerId: string | null;
+        scoreP1: number;
+        scoreP2: number;
+        status: string;
+        nextMatchId: string | null;
+        bracketSide: 'WINNERS' | 'LOSERS' | 'GRAND_FINAL';
+      }[]
+    | null = null;
+
+  if (canPreview) {
+    const seeds = tournament.participants.map((p, i) => ({
+      participantId: p.id,
+      seed: p.seed ?? i + 1,
+    }));
+    try {
+      const raw =
+        tournament.format === 'DOUBLE_ELIMINATION'
+          ? generateDoubleElim({ seeds })
+          : generateSingleElim({ seeds });
+      previewMatches = raw.map((m) => ({
+        id: m.id,
+        round: m.round,
+        matchNumber: m.matchNumber,
+        participant1Id: m.participant1Id,
+        participant2Id: m.participant2Id,
+        winnerId: null,
+        scoreP1: 0,
+        scoreP2: 0,
+        status: 'PENDING',
+        nextMatchId: m.nextMatchId,
+        bracketSide: m.bracketSide,
+      }));
+    } catch {
+      // Ej.: doble elim que no es potencia de 2 todavía.
+      previewMatches = null;
+    }
+  }
+
   const winner =
     tournament.status === 'COMPLETED'
       ? tournament.participants.find((p) => p.status === 'WINNER')
@@ -143,6 +199,26 @@ export default async function TournamentPage({ params }: PageProps) {
           value={`${tournament.matches.filter((m) => m.status === 'COMPLETED').length} / ${tournament.matches.length}`}
         />
       </div>
+
+      {/* Preview de la llave (solo admin, antes de iniciar) */}
+      {previewMatches && (
+        <section className="mb-12 border-2 border-accent/60 bg-card p-4">
+          <div className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">
+            [preview de la llave · solo admin]
+          </div>
+          <BracketSVG
+            matches={previewMatches}
+            participants={tournament.participants.map((p, i) => ({
+              id: p.id,
+              name: p.user.globalName ?? p.user.username,
+              seed: p.seed ?? i + 1,
+            }))}
+          />
+          <p className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+            Seeds provisionales por orden de registro · la llave definitiva se arma al iniciar el torneo.
+          </p>
+        </section>
+      )}
 
       {/* Bracket / Tabla según formato */}
       {(() => {
