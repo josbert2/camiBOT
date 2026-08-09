@@ -15,6 +15,7 @@ import {
 } from '@hugeicons/core-free-icons';
 import { auth, signOut } from '@/auth';
 import { isAdmin } from '@/lib/admin';
+import { NotificationBell } from '@/components/notification-bell';
 
 export async function Nav() {
   const session = await auth();
@@ -67,6 +68,8 @@ export async function Nav() {
             <NavLink href="/discusion" icon={Message01Icon} small />
             <NavLink href="/comandos" icon={TerminalIcon} small />
           </div>
+
+          {session?.user?.id && <NotificationBell />}
 
           {session?.user?.id ? (
             <form

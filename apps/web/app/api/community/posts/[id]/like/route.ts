@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@camibot/db';
 import { auth } from '@/auth';
+import { notify } from '@/lib/notifications';
 
 /** Toggle: si ya diste like lo saca, si no lo pone. */
 export async function POST(
@@ -17,7 +18,7 @@ export async function POST(
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, authorId: true },
   });
   if (!post || post.status === 'REMOVED') {
     return NextResponse.json({ error: 'Ese clip no existe.' }, { status: 404 });
@@ -36,6 +37,8 @@ export async function POST(
     await prisma.postLike
       .create({ data: { postId, userId } })
       .catch(() => undefined);
+    // Notificamos al autor del clip que recibió un like.
+    await notify({ userId: post.authorId, actorId: userId, type: 'LIKE', postId });
   }
 
   const likeCount = await prisma.postLike.count({ where: { postId } });

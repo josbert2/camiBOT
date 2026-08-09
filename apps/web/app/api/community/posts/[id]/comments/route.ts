@@ -4,6 +4,7 @@ import { prisma } from '@camibot/db';
 import { auth } from '@/auth';
 import { COMMENT_MAX, discordAvatarUrl, getComments } from '@/lib/community';
 import { containsProfanity } from '@/lib/profanity';
+import { notify, resolveMentions } from '@/lib/notifications';
 
 const createSchema = z.object({
   body: z.string().min(1).max(COMMENT_MAX),
@@ -50,7 +51,7 @@ export async function POST(
 
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    select: { id: true, status: true },
+    select: { id: true, status: true, authorId: true },
   });
   if (!post || post.status === 'REMOVED') {
     return NextResponse.json({ error: 'Ese clip no existe.' }, { status: 404 });
@@ -70,6 +71,23 @@ export async function POST(
       },
     },
   });
+
+  // Notificaciones: al autor del post (COMMENT) y a los @mencionados (MENTION).
+  await notify({
+    userId: post.authorId,
+    actorId: session.user.id,
+    type: 'COMMENT',
+    postId,
+    commentId: created.id,
+  });
+  const mentioned = await resolveMentions(body);
+  await Promise.all(
+    mentioned
+      .filter((uid) => uid !== post.authorId)
+      .map((uid) =>
+        notify({ userId: uid, actorId: session!.user!.id!, type: 'MENTION', postId, commentId: created.id }),
+      ),
+  );
 
   return NextResponse.json(
     {

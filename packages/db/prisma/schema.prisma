@@ -42,6 +42,8 @@ model User {
   postComments PostComment[] @relation("CommentAuthor")
   seasonsWon     Season[]    @relation("SeasonWinner")
   seasonsCreated Season[]    @relation("SeasonCreator")
+  notifications      Notification[] @relation("NotifUser")
+  actedNotifications Notification[] @relation("NotifActor")
 
   @@index([discordId])
 }
@@ -517,6 +519,29 @@ model PostComment {
 enum SeasonStatus {
   ACTIVE
   CLOSED
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  MENTION
+}
+
+/** Notificación in-app: like, comentario o mención hacia un usuario. */
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String // destinatario
+  actorId   String? // quién la generó (null si el post era anónimo)
+  type      NotificationType
+  postId    String?
+  commentId String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user  User  @relation("NotifUser", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotifActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId, read, createdAt])
 }
 
 /**
