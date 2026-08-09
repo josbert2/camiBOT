@@ -19,6 +19,7 @@ export interface ParticipantInfo {
   id: string;
   name: string;
   seed: number | null;
+  avatarUrl?: string | null;
 }
 
 interface BracketSVGProps {
@@ -159,6 +160,7 @@ function MatchBox({
         score={match.scoreP1}
         showScore={isCompleted}
         won={p1Won}
+        avatar={p1?.avatarUrl ?? null}
       />
       {/* Player 2 */}
       <PlayerRow
@@ -168,6 +170,7 @@ function MatchBox({
         score={match.scoreP2}
         showScore={isCompleted}
         won={p2Won}
+        avatar={p2?.avatarUrl ?? null}
       />
     </g>
   );
@@ -180,6 +183,7 @@ function PlayerRow({
   score,
   showScore,
   won,
+  avatar,
 }: {
   y: number;
   name: string | null;
@@ -187,6 +191,7 @@ function PlayerRow({
   score: number;
   showScore: boolean;
   won: boolean;
+  avatar?: string | null;
 }) {
   const isTBD = !name;
   return (
@@ -204,8 +209,19 @@ function PlayerRow({
       <text x={14} y={MATCH_H / 4 + 5} fontSize="11" className="fill-muted-foreground">
         {seed ? String(seed).padStart(2, '0') : '--'}
       </text>
+      {avatar && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <image
+          href={avatar}
+          x={30}
+          y={MATCH_H / 4 - 9}
+          width={18}
+          height={18}
+          preserveAspectRatio="xMidYMid slice"
+        />
+      )}
       <text
-        x={42}
+        x={avatar ? 54 : 42}
         y={MATCH_H / 4 + 5}
         fontSize="13"
         className={isTBD ? 'fill-muted-foreground' : won ? 'fill-foreground font-bold' : 'fill-foreground'}

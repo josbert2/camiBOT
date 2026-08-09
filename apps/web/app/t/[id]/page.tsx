@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { prisma } from '@camibot/db';
 import { auth } from '@/auth';
 import { isAdmin } from '@/lib/admin';
+import { discordAvatarUrl } from '@/lib/community';
 import { generateSingleElim, generateDoubleElim } from '@camibot/core';
 import { TournamentRegister } from './register';
 import { CopyLink } from './copy-link';
@@ -214,6 +215,7 @@ export default async function TournamentPage({ params }: PageProps) {
               id: p.id,
               name: p.user.globalName ?? p.user.username,
               seed: p.seed ?? i + 1,
+              avatarUrl: discordAvatarUrl(p.user.discordId, p.user.avatar),
             }))}
           />
           <p className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -241,6 +243,7 @@ export default async function TournamentPage({ params }: PageProps) {
           id: p.id,
           name: p.user.globalName ?? p.user.username,
           seed: p.seed,
+          avatarUrl: discordAvatarUrl(p.user.discordId, p.user.avatar),
         }));
 
         if (tournament.format === 'GROUP_STAGE') {
