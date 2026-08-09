@@ -5,6 +5,7 @@ import { auth } from '@/auth';
 import { isAdmin } from '@/lib/admin';
 import { generateSingleElim, generateDoubleElim } from '@camibot/core';
 import { TournamentRegister } from './register';
+import { CopyLink } from './copy-link';
 import { BracketSVG } from '@/components/bracket-svg';
 import { StandingsTable } from '@/components/standings-table';
 import { SwissStandingsTable } from '@/components/swiss-standings-table';
@@ -174,7 +175,7 @@ export default async function TournamentPage({ params }: PageProps) {
           </div>
         )}
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <TournamentRegister
             tournamentId={tournament.id}
             isAuthed={!!myId}
@@ -183,6 +184,7 @@ export default async function TournamentPage({ params }: PageProps) {
             isRegistered={isRegistered}
             teamSize={tournament.teamSize}
           />
+          <CopyLink path={`/t/${tournament.id}`} label="Copiar link" />
         </div>
       </header>
 
