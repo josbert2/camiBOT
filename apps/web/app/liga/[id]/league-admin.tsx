@@ -37,7 +37,20 @@ export function LeagueAdmin({ leagueId, status }: { leagueId: string; status: st
 
   return (
     <section className="mb-8 border-2 border-accent/60 bg-card p-4">
-      <div className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">[gestión · solo admin]</div>
+      <div className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">[comandos · solo admin]</div>
+      <ul className="mb-3 space-y-1 text-xs text-muted-foreground">
+        <li>
+          <span className="text-foreground">Cargar kills/goles:</span> en cada partido de abajo, botón{' '}
+          <span className="text-foreground">“Cargar resultado”</span>.
+        </li>
+        <li>
+          <span className="text-foreground">Puntos:</span> kills × 1.2 si ganás (×1.4 si ganás por ≥5 de
+          diferencia de kills).
+        </li>
+        <li>
+          <span className="text-foreground">Compartir / cerrar:</span> con los botones de acá abajo.
+        </li>
+      </ul>
       <div className="flex flex-wrap gap-3">
         <button
           onClick={copyLink}
