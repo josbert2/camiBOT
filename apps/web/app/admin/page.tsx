@@ -146,6 +146,12 @@ export default async function AdminPage({ searchParams }: SearchParamsP) {
             Anónimos
           </Link>
           <Link
+            href="/admin/ligas"
+            className="border-2 border-border-strong px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-foreground hover:text-background"
+          >
+            Ligas
+          </Link>
+          <Link
             href="/dashboard"
             className="border-2 border-border-strong px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-foreground hover:text-background"
           >

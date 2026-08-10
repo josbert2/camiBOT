@@ -45,6 +45,8 @@ model User {
   notifications      Notification[] @relation("NotifUser")
   actedNotifications Notification[] @relation("NotifActor")
   verdicts           Verdict[]
+  leaguesCreated     League[]       @relation("LeagueCreator")
+  leaguePlayers      LeaguePlayer[]
 
   @@index([discordId])
 }
@@ -532,6 +534,69 @@ enum NotificationType {
 enum VerdictVote {
   GUILTY
   INNOCENT
+}
+
+enum LeagueStatus {
+  ACTIVE
+  FINISHED
+}
+
+enum LeagueMatchStatus {
+  PENDING
+  PLAYED
+}
+
+/** Liga round-robin de jugadores individuales. Puntos 3/1/0 + kills. */
+model League {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique
+  guildId     String?
+  status      LeagueStatus @default(ACTIVE)
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  createdBy User           @relation("LeagueCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  players   LeaguePlayer[]
+  matches   LeagueMatch[]
+
+  @@index([status, createdAt])
+}
+
+model LeaguePlayer {
+  id       String @id @default(cuid())
+  leagueId String
+  userId   String
+
+  league      League        @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  homeMatches LeagueMatch[] @relation("LeagueHome")
+  awayMatches LeagueMatch[] @relation("LeagueAway")
+
+  @@unique([leagueId, userId])
+  @@index([leagueId])
+}
+
+model LeagueMatch {
+  id        String            @id @default(cuid())
+  leagueId  String
+  homeId    String
+  awayId    String
+  homeScore Int?
+  awayScore Int?
+  homeKills Int?
+  awayKills Int?
+  status    LeagueMatchStatus @default(PENDING)
+  playedAt  DateTime?
+  createdAt DateTime          @default(now())
+
+  league League       @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  home   LeaguePlayer @relation("LeagueHome", fields: [homeId], references: [id], onDelete: Cascade)
+  away   LeaguePlayer @relation("LeagueAway", fields: [awayId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, homeId, awayId])
+  @@index([leagueId, status])
 }
 
 /** Voto del "tribunal" sobre un post de discusión: culpable o inocente. */

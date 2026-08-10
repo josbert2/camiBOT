@@ -32,6 +32,9 @@ export async function Nav() {
           <NavLink href="/torneos" icon={ChampionIcon}>
             Torneos
           </NavLink>
+          <NavLink href="/ligas" icon={ChampionIcon}>
+            Ligas
+          </NavLink>
           <NavLink href="/players" icon={RankingIcon}>
             Ranking
           </NavLink>
@@ -62,6 +65,7 @@ export async function Nav() {
         <div className="flex items-center gap-2">
           <div className="flex gap-1 md:hidden">
             <NavLink href="/torneos" icon={ChampionIcon} small />
+            <NavLink href="/ligas" icon={ChampionIcon} small />
             <NavLink href="/players" icon={RankingIcon} small />
             <NavLink href="/wz" icon={GunIcon} small />
             <NavLink href="/comunidad" icon={UserGroupIcon} small />
