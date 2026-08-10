@@ -172,7 +172,7 @@ export default async function TournamentPage({ params }: PageProps) {
               Ganador
             </div>
             <div className="text-lg font-bold uppercase text-primary-foreground">
-              🏆 {winner.user.globalName ?? winner.user.username}
+              🏆 {winner.user.nickname ?? winner.user.globalName ?? winner.user.username}
             </div>
           </div>
         )}
@@ -216,7 +216,7 @@ export default async function TournamentPage({ params }: PageProps) {
             matches={previewMatches}
             participants={tournament.participants.map((p, i) => ({
               id: p.id,
-              name: p.user.globalName ?? p.user.username,
+              name: p.user.nickname ?? p.user.globalName ?? p.user.username,
               seed: p.seed ?? i + 1,
               avatarUrl: discordAvatarUrl(p.user.discordId, p.user.avatar),
             }))}
@@ -244,7 +244,7 @@ export default async function TournamentPage({ params }: PageProps) {
         }));
         const participants = tournament.participants.map((p) => ({
           id: p.id,
-          name: p.user.globalName ?? p.user.username,
+          name: p.user.nickname ?? p.user.globalName ?? p.user.username,
           seed: p.seed,
           avatarUrl: discordAvatarUrl(p.user.discordId, p.user.avatar),
         }));
@@ -253,7 +253,7 @@ export default async function TournamentPage({ params }: PageProps) {
           const playoffMatches = allMatches.filter((m) => m.round >= PLAYOFF_ROUND_OFFSET);
           const groupParticipants = tournament.participants.map((p) => ({
             id: p.id,
-            name: p.user.globalName ?? p.user.username,
+            name: p.user.nickname ?? p.user.globalName ?? p.user.username,
             seed: p.seed,
             groupNumber: p.groupNumber,
           }));
@@ -286,7 +286,7 @@ export default async function TournamentPage({ params }: PageProps) {
         if (tournament.format === 'FFA') {
           const ffaParticipants = tournament.participants.map((p) => ({
             id: p.id,
-            name: p.user.globalName ?? p.user.username,
+            name: p.user.nickname ?? p.user.globalName ?? p.user.username,
             seed: p.seed,
             ffaScore: p.ffaScore !== null ? Number(p.ffaScore) : null,
             ffaNote: p.ffaNote,
@@ -404,7 +404,7 @@ export default async function TournamentPage({ params }: PageProps) {
                 seed {p.seed ? String(p.seed).padStart(2, '0') : '--'}
               </div>
               <div className="mt-1 truncate text-sm font-bold">
-                {p.user.globalName ?? p.user.username}
+                {p.user.nickname ?? p.user.globalName ?? p.user.username}
               </div>
               <div className="text-[10px] uppercase text-muted-foreground">
                 {p.wins}W · {p.losses}L
