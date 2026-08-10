@@ -6,6 +6,7 @@ import { auth } from '@/auth';
 import { isAdmin } from '@/lib/admin';
 import { getLeague, computeStandings } from '@/lib/league';
 import { LeagueFixtures, type FixtureMatch } from './fixtures';
+import { LeagueAdmin } from './league-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,8 @@ export default async function LeaguePage({ params }: { params: Promise<{ id: str
           {league.players.length} jugadores · {played}/{fixtures.length} partidos jugados · puntos 3/1/0
         </p>
       </header>
+
+      {isAdmin(session) && <LeagueAdmin leagueId={league.id} status={league.status} />}
 
       <section className="mb-10">
         <div className="mb-3 tag-tactical">// TABLA DE POSICIONES</div>
