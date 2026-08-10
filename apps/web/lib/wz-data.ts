@@ -198,7 +198,9 @@ export function extractAttachments(build: WzBuild): WzBuildAttachment[] {
 }
 
 export function weaponImage(w: WzWeapon, kind: 'thumb' | 'full' = 'thumb'): string {
-  const v = w.imageVersion ?? '4';
+  // Ojo `||` y no `??`: muchas armas traen imageVersion como string vacío y
+  // `_version/` responde 404. El fallback a 4 sí resuelve.
+  const v = w.imageVersion || '4';
   if (kind === 'full') return `https://img.wzstats.gg/${w.id}/public`;
   return `https://img.wzstats.gg/${w.id}_version${v}/gunDisplayLoadouts`;
 }

@@ -84,9 +84,25 @@ function toCatalogItem(w: WzWeapon): WzCatalogItem {
   };
 }
 
+/** Orden del tier list de wzstats: META primero, D último. */
+const TIER_ORDER: Record<string, number> = { META: 0, S: 1, A: 2, B: 3, C: 4, D: 5 };
+const tierRank = (t?: string | null) => TIER_ORDER[(t || 'D').toUpperCase()] ?? 9;
+
+/** Mejor puesto entre los rankings por categoría (menor = mejor). */
+const badgeRank = (w: WzWeapon) => (w.badges || []).reduce((min, b) => Math.min(min, b.rank), 999);
+
 export default async function WzCatalogPage() {
-  const weapons = listWeapons('warzone')
-    .sort((a, b) => (a.position ?? 9999) - (b.position ?? 9999))
+  // wzstats dejó de mandar `position` y `pickRate`, así que el orden sale del
+  // tier list (META arriba) y, dentro del tier, del ranking por categoría.
+  // Copiamos el array porque listWeapons devuelve el dump cacheado por referencia.
+  const weapons = [...listWeapons('warzone')]
+    .sort(
+      (a, b) =>
+        tierRank(a.tier) - tierRank(b.tier) ||
+        badgeRank(a) - badgeRank(b) ||
+        (a.position ?? 9999) - (b.position ?? 9999) ||
+        a.name.localeCompare(b.name),
+    )
     .map(toCatalogItem);
 
   // JSON-LD ItemList para SEO de catálogos
