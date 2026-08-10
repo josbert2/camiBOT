@@ -1,7 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+
+/** Reordena para que dos partidos seguidos no compartan jugador (intercalado). */
+function interleave(ms: FixtureMatch[]): FixtureMatch[] {
+  const pool = [...ms];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+  }
+  const out: FixtureMatch[] = [];
+  let lastA: string | null = null;
+  let lastB: string | null = null;
+  while (pool.length) {
+    let idx = pool.findIndex(
+      (m) =>
+        m.homeUserId !== lastA &&
+        m.homeUserId !== lastB &&
+        m.awayUserId !== lastA &&
+        m.awayUserId !== lastB,
+    );
+    if (idx === -1) idx = 0;
+    const m = pool.splice(idx, 1)[0]!;
+    out.push(m);
+    lastA = m.homeUserId;
+    lastB = m.awayUserId;
+  }
+  return out;
+}
 
 export type FixtureMatch = {
   id: string;
@@ -29,15 +56,46 @@ export function LeagueFixtures({
   isAdmin: boolean;
   myUserId: string | null;
 }) {
-  const pending = matches.filter((m) => m.status !== 'PLAYED');
+  const [mode, setMode] = useState<'system' | 'mix'>('system');
+  const [nonce, setNonce] = useState(0);
   const played = matches.filter((m) => m.status === 'PLAYED');
+  const pending = useMemo(() => {
+    const p = matches.filter((m) => m.status !== 'PLAYED');
+    // nonce fuerza un re-mezclado cuando tocás "mezclar"
+    void nonce;
+    return mode === 'mix' ? interleave(p) : p;
+  }, [matches, mode, nonce]);
+
+  const tabClass = (active: boolean) =>
+    `border-2 px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition ${
+      active ? 'border-primary text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+    }`;
 
   return (
     <div className="space-y-6">
       {pending.length > 0 && (
         <div>
-          <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-            Por jugar · {pending.length}
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Por jugar · {pending.length}
+            </span>
+            <div className="flex gap-1">
+              <button onClick={() => setMode('system')} className={tabClass(mode === 'system')}>
+                Por sistema
+              </button>
+              <button onClick={() => setMode('mix')} className={tabClass(mode === 'mix')}>
+                Intercalado
+              </button>
+              {mode === 'mix' && (
+                <button
+                  onClick={() => setNonce((n) => n + 1)}
+                  className="border-2 border-border px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition hover:text-foreground"
+                  title="Volver a mezclar"
+                >
+                  ↻
+                </button>
+              )}
+            </div>
           </div>
           <ul className="space-y-2">
             {pending.map((m) => (
