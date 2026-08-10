@@ -7,6 +7,8 @@ export type FixtureMatch = {
   id: string;
   homeName: string;
   awayName: string;
+  homeAvatar: string | null;
+  awayAvatar: string | null;
   homeUserId: string;
   awayUserId: string;
   homeScore: number | null;
@@ -27,21 +29,62 @@ export function LeagueFixtures({
   isAdmin: boolean;
   myUserId: string | null;
 }) {
+  const pending = matches.filter((m) => m.status !== 'PLAYED');
+  const played = matches.filter((m) => m.status === 'PLAYED');
+
   return (
-    <ul className="space-y-2">
-      {matches.map((m) => (
-        <MatchRow
-          key={m.id}
-          leagueId={leagueId}
-          match={m}
-          canEdit={isAdmin || myUserId === m.homeUserId || myUserId === m.awayUserId}
-        />
-      ))}
-    </ul>
+    <div className="space-y-6">
+      {pending.length > 0 && (
+        <div>
+          <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+            Por jugar · {pending.length}
+          </div>
+          <ul className="space-y-2">
+            {pending.map((m) => (
+              <MatchCard
+                key={m.id}
+                leagueId={leagueId}
+                match={m}
+                canEdit={isAdmin || myUserId === m.homeUserId || myUserId === m.awayUserId}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+      {played.length > 0 && (
+        <div>
+          <div className="mb-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+            Jugados · {played.length}
+          </div>
+          <ul className="space-y-2">
+            {played.map((m) => (
+              <MatchCard
+                key={m.id}
+                leagueId={leagueId}
+                match={m}
+                canEdit={isAdmin || myUserId === m.homeUserId || myUserId === m.awayUserId}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
-function MatchRow({
+function Avatar({ url, name }: { url: string | null; name: string }) {
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="" className="h-8 w-8 shrink-0 border border-border object-cover" />;
+  }
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center border border-border bg-muted text-[9px] text-muted-foreground">
+      {name.slice(0, 2).toUpperCase()}
+    </span>
+  );
+}
+
+function MatchCard({
   leagueId,
   match,
   canEdit,
@@ -52,6 +95,9 @@ function MatchRow({
 }) {
   const router = useRouter();
   const played = match.status === 'PLAYED';
+  const homeWon = played && (match.homeScore ?? 0) > (match.awayScore ?? 0);
+  const awayWon = played && (match.awayScore ?? 0) > (match.homeScore ?? 0);
+
   const [editing, setEditing] = useState(false);
   const [hs, setHs] = useState(match.homeScore?.toString() ?? '');
   const [as, setAs] = useState(match.awayScore?.toString() ?? '');
@@ -87,71 +133,71 @@ function MatchRow({
   }
 
   return (
-    <li className="border-2 border-border bg-card px-3 py-2">
-      <div className="flex items-center gap-3">
-        <span className="min-w-0 flex-1 truncate text-right text-sm">{match.homeName}</span>
-        <span className="shrink-0 text-center font-mono text-sm">
-          {played ? `${match.homeScore} - ${match.awayScore}` : 'vs'}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-sm">{match.awayName}</span>
-        {canEdit && !editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="shrink-0 border border-border px-2 py-1 text-[10px] uppercase tracking-widest text-muted-foreground transition hover:border-border-strong hover:text-foreground"
-          >
-            {played ? 'Editar' : 'Cargar'}
-          </button>
-        )}
+    <li className={`hud-panel p-3 ${played ? '' : 'opacity-95'}`}>
+      <div className="flex items-center gap-2">
+        {/* Local */}
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 text-right">
+          <span className={`min-w-0 truncate text-sm ${homeWon ? 'font-bold text-foreground' : ''}`}>
+            {match.homeName}
+          </span>
+          <Avatar url={match.homeAvatar} name={match.homeName} />
+        </div>
+
+        {/* Marcador */}
+        <div className="shrink-0 px-2 text-center">
+          {played ? (
+            <div className="display text-2xl leading-none tabular-nums">
+              <span className={homeWon ? 'text-primary' : ''}>{match.homeScore}</span>
+              <span className="text-muted-foreground"> - </span>
+              <span className={awayWon ? 'text-primary' : ''}>{match.awayScore}</span>
+            </div>
+          ) : (
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">vs</span>
+          )}
+        </div>
+
+        {/* Visitante */}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Avatar url={match.awayAvatar} name={match.awayName} />
+          <span className={`min-w-0 truncate text-sm ${awayWon ? 'font-bold text-foreground' : ''}`}>
+            {match.awayName}
+          </span>
+        </div>
       </div>
 
-      {played && !editing && (match.homeKills || match.awayKills) ? (
-        <div className="mt-1 text-center text-[10px] uppercase tracking-widest text-muted-foreground">
-          kills {match.homeKills ?? 0} - {match.awayKills ?? 0}
+      {played && (match.homeKills || match.awayKills) ? (
+        <div className="mt-1 text-center text-[10px] uppercase tracking-widest text-danger">
+          {match.homeKills ?? 0} kills · {match.awayKills ?? 0}
         </div>
       ) : null}
 
+      {canEdit && !editing && (
+        <div className="mt-2 text-center">
+          <button
+            onClick={() => setEditing(true)}
+            className="border border-border px-3 py-1 text-[10px] uppercase tracking-widest text-muted-foreground transition hover:border-border-strong hover:text-foreground"
+          >
+            {played ? 'Editar resultado' : 'Cargar resultado'}
+          </button>
+        </div>
+      )}
+
       {editing && (
-        <div className="mt-2 space-y-2">
+        <div className="mt-3 space-y-2 border-t border-border pt-3">
           <div className="flex items-center justify-center gap-2 text-xs">
-            <span className="text-[10px] uppercase text-muted-foreground">Goles</span>
-            <input
-              value={hs}
-              onChange={(e) => setHs(e.target.value.replace(/\D/g, ''))}
-              inputMode="numeric"
-              className="w-12 border-2 border-border bg-input px-2 py-1 text-center text-sm outline-none"
-            />
+            <span className="w-10 text-right text-[10px] uppercase text-muted-foreground">Goles</span>
+            <input value={hs} onChange={(e) => setHs(e.target.value.replace(/\D/g, ''))} inputMode="numeric" className="w-12 border-2 border-border bg-input px-2 py-1 text-center text-sm outline-none" />
             <span>-</span>
-            <input
-              value={as}
-              onChange={(e) => setAs(e.target.value.replace(/\D/g, ''))}
-              inputMode="numeric"
-              className="w-12 border-2 border-border bg-input px-2 py-1 text-center text-sm outline-none"
-            />
+            <input value={as} onChange={(e) => setAs(e.target.value.replace(/\D/g, ''))} inputMode="numeric" className="w-12 border-2 border-border bg-input px-2 py-1 text-center text-sm outline-none" />
           </div>
           <div className="flex items-center justify-center gap-2 text-xs">
-            <span className="text-[10px] uppercase text-muted-foreground">Kills</span>
-            <input
-              value={hk}
-              onChange={(e) => setHk(e.target.value.replace(/\D/g, ''))}
-              inputMode="numeric"
-              placeholder="0"
-              className="w-12 border-2 border-border bg-input px-2 py-1 text-center text-sm outline-none"
-            />
+            <span className="w-10 text-right text-[10px] uppercase text-muted-foreground">Kills</span>
+            <input value={hk} onChange={(e) => setHk(e.target.value.replace(/\D/g, ''))} inputMode="numeric" placeholder="0" className="w-12 border-2 border-border bg-input px-2 py-1 text-center text-sm outline-none" />
             <span>-</span>
-            <input
-              value={ak}
-              onChange={(e) => setAk(e.target.value.replace(/\D/g, ''))}
-              inputMode="numeric"
-              placeholder="0"
-              className="w-12 border-2 border-border bg-input px-2 py-1 text-center text-sm outline-none"
-            />
+            <input value={ak} onChange={(e) => setAk(e.target.value.replace(/\D/g, ''))} inputMode="numeric" placeholder="0" className="w-12 border-2 border-border bg-input px-2 py-1 text-center text-sm outline-none" />
           </div>
           <div className="flex justify-center gap-2">
-            <button
-              onClick={save}
-              disabled={busy || hs === '' || as === ''}
-              className="btn-tactical text-xs disabled:opacity-50"
-            >
+            <button onClick={save} disabled={busy || hs === '' || as === ''} className="btn-tactical text-xs disabled:opacity-50">
               {busy ? 'Guardando…' : 'Guardar'}
             </button>
             <button onClick={() => setEditing(false)} className="btn-ghost text-xs">

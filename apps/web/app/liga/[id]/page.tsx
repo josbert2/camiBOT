@@ -5,6 +5,7 @@ import { ChampionIcon } from '@hugeicons/core-free-icons';
 import { auth } from '@/auth';
 import { isAdmin } from '@/lib/admin';
 import { getLeague, computeStandings } from '@/lib/league';
+import { discordAvatarUrl } from '@/lib/community';
 import { LeagueFixtures, type FixtureMatch } from './fixtures';
 import { LeagueAdmin } from './league-admin';
 
@@ -28,6 +29,8 @@ export default async function LeaguePage({ params }: { params: Promise<{ id: str
     id: m.id,
     homeName: nameOf(m.home.user),
     awayName: nameOf(m.away.user),
+    homeAvatar: discordAvatarUrl(m.home.user.discordId, m.home.user.avatar),
+    awayAvatar: discordAvatarUrl(m.away.user.discordId, m.away.user.avatar),
     homeUserId: m.home.userId,
     awayUserId: m.away.userId,
     homeScore: m.homeScore,
