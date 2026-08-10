@@ -98,6 +98,31 @@ export default async function LeaguePage({ params }: { params: Promise<{ id: str
         </div>
       </section>
 
+      {standings.some((r) => r.kills > 0) && (
+        <section className="mb-10">
+          <div className="mb-3 tag-tactical">// KILLS</div>
+          <ol className="divide-y divide-border border-2 border-border">
+            {[...standings]
+              .sort((a, b) => b.kills - a.kills)
+              .slice(0, 10)
+              .map((r, i) => (
+                <li key={r.playerId} className="flex items-center gap-3 px-3 py-2">
+                  <span className="display w-5 text-center text-base text-muted-foreground">
+                    {i + 1}
+                  </span>
+                  {r.avatarUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={r.avatarUrl} alt="" className="h-7 w-7 border border-border object-cover" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-sm">{r.name}</span>
+                  <span className="display text-lg tabular-nums text-danger">{r.kills}</span>
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground">kills</span>
+                </li>
+              ))}
+          </ol>
+        </section>
+      )}
+
       <section>
         <div className="mb-3 tag-tactical">// PARTIDOS</div>
         <LeagueFixtures
