@@ -15,7 +15,10 @@ import {
   type WzBuild,
 } from '@/lib/wz-data';
 
-export const revalidate = 300; // 5 min — los dumps se actualizan via cron
+// Render dinámico por request: el layout/nav usa auth() (cookies), lo que es
+// incompatible con la generación estática de estas rutas. Los dumps se leen del
+// filesystem en cada request.
+export const dynamic = 'force-dynamic';
 
 const SITE_URL = process.env.AUTH_URL ?? 'https://tournify.josbert.dev';
 
