@@ -11,7 +11,9 @@ LOG="logs/scraper-$(date +%Y%m%d).log"
 
 {
   echo "═══ $(date -Iseconds) ═══"
-  /usr/bin/node scraper.mjs --browser
+  # Sin --browser: la API de wzstats responde con fetch nativo y así el server
+  # no necesita Playwright instalado.
+  /usr/bin/node scraper.mjs --game all --quiet
   echo "═══ fin $(date -Iseconds) ═══"
   echo ""
 } >> "$LOG" 2>&1
