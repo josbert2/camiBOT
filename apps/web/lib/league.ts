@@ -1,6 +1,9 @@
 import { prisma } from '@camibot/db';
 import { discordAvatarUrl } from '@/lib/community';
 
+/** Diferencia de kills a partir de la cual el multiplicador de victoria es x1.4. */
+const KILL_DIFF_HIGH = 5;
+
 /** Todas las parejas round-robin (cada par una vez). */
 export function roundRobinPairs(ids: string[]): [string, string][] {
   const pairs: [string, string][] = [];
@@ -73,33 +76,44 @@ export function computeStandings(players: RawPlayer[], matches: RawMatch[]): Sta
     const h = map.get(m.homeId);
     const a = map.get(m.awayId);
     if (!h || !a) continue;
+    const hk = m.homeKills ?? 0;
+    const ak = m.awayKills ?? 0;
+
     h.pj++;
     a.pj++;
     h.gf += m.homeScore;
     h.gc += m.awayScore;
     a.gf += m.awayScore;
     a.gc += m.homeScore;
-    h.kills += m.homeKills ?? 0;
-    a.kills += m.awayKills ?? 0;
-    if (m.homeScore > m.awayScore) {
+    h.kills += hk;
+    a.kills += ak;
+
+    const homeWon = m.homeScore > m.awayScore;
+    const awayWon = m.awayScore > m.homeScore;
+    if (homeWon) {
       h.pg++;
       a.pp++;
-      h.pts += 3;
-    } else if (m.homeScore < m.awayScore) {
+    } else if (awayWon) {
       a.pg++;
       h.pp++;
-      a.pts += 3;
     } else {
       h.pe++;
       a.pe++;
-      h.pts += 1;
-      a.pts += 1;
     }
+
+    // Puntos = kills; si ganás, tus kills se multiplican según la diferencia
+    // de kills del partido (grande → x1.4, ajustada → x1.2).
+    const mult = Math.abs(hk - ak) >= KILL_DIFF_HIGH ? 1.4 : 1.2;
+    h.pts += hk * (homeWon ? mult : 1);
+    a.pts += ak * (awayWon ? mult : 1);
   }
 
   const rows = [...map.values()];
-  for (const r of rows) r.dg = r.gf - r.gc;
-  rows.sort((x, y) => y.pts - x.pts || y.dg - x.dg || y.gf - x.gf || y.kills - x.kills);
+  for (const r of rows) {
+    r.dg = r.gf - r.gc;
+    r.pts = Math.round(r.pts * 10) / 10;
+  }
+  rows.sort((x, y) => y.pts - x.pts || y.kills - x.kills || y.pg - x.pg);
   return rows;
 }
 
