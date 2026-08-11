@@ -47,6 +47,8 @@ model User {
   verdicts           Verdict[]
   leaguesCreated     League[]       @relation("LeagueCreator")
   leaguePlayers      LeaguePlayer[]
+  gulagAccusations   GulagEntry[]   @relation("GulagAccused")
+  gulagCreated       GulagEntry[]   @relation("GulagCreator")
 
   @@index([discordId])
 }
@@ -658,4 +660,34 @@ model Season {
   createdBy User  @relation("SeasonCreator", fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([status, endsAt])
+}
+
+enum GulagStatus {
+  ACCUSED
+  CONFIRMED
+  ACQUITTED
+}
+
+/**
+ * Acusado de usar hacks. `userId` se completa cuando el acusado es alguien
+ * registrado en la web (así mostramos avatar y apodo); si no, queda solo el
+ * `name` suelto, que es el caso de la gente que está en Discord pero nunca
+ * entró acá.
+ */
+model GulagEntry {
+  id          String      @id @default(cuid())
+  name        String
+  userId      String?
+  // De qué se lo acusa (aimbot, wallhack, etc.) y link a la prueba.
+  reason      String?
+  evidence    String?
+  status      GulagStatus @default(ACCUSED)
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user      User? @relation("GulagAccused", fields: [userId], references: [id], onDelete: SetNull)
+  createdBy User  @relation("GulagCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
 }
