@@ -193,6 +193,12 @@ function PrivadaCard({
         </a>
       )}
 
+      {!row.hasSignup && (
+        <p className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+          Solo anuncio · sin inscripción
+        </p>
+      )}
+
       {row.hasSignup && isLoggedIn && canAct && (
         <div className="mt-3">
           <input

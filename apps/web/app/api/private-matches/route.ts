@@ -18,6 +18,11 @@ export async function POST(req: Request) {
   const prize = typeof body?.prize === 'string' ? body.prize.trim() || null : null;
   const hasSignup = body?.hasSignup !== false;
 
+  let squadSize = 1;
+  if (typeof body?.squadSize === 'number' && Number.isFinite(body.squadSize)) {
+    squadSize = Math.min(4, Math.max(1, Math.round(body.squadSize)));
+  }
+
   let maxPlayers: number | null = null;
   if (typeof body?.maxPlayers === 'number' && Number.isFinite(body.maxPlayers)) {
     maxPlayers = Math.min(200, Math.max(2, Math.round(body.maxPlayers)));
@@ -30,7 +35,7 @@ export async function POST(req: Request) {
   }
 
   const match = await prisma.privateMatch.create({
-    data: { name, link, prize, hasSignup, maxPlayers, scheduledAt, createdById: session.user.id },
+    data: { name, link, prize, hasSignup, squadSize, maxPlayers, scheduledAt, createdById: session.user.id },
     select: { id: true },
   });
 
