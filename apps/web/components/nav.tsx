@@ -13,6 +13,7 @@ import {
   Message01Icon,
   ChampionIcon,
   PoliceBadgeIcon,
+  GameController01Icon,
 } from '@hugeicons/core-free-icons';
 import { auth, signOut } from '@/auth';
 import { isAdmin } from '@/lib/admin';
@@ -35,6 +36,9 @@ export async function Nav() {
           </NavLink>
           <NavLink href="/ligas" icon={ChampionIcon}>
             Ligas
+          </NavLink>
+          <NavLink href="/privadas" icon={GameController01Icon}>
+            Privadas
           </NavLink>
           <NavLink href="/players" icon={RankingIcon}>
             Ranking
@@ -70,6 +74,7 @@ export async function Nav() {
           <div className="flex gap-1 md:hidden">
             <NavLink href="/torneos" icon={ChampionIcon} small />
             <NavLink href="/ligas" icon={ChampionIcon} small />
+            <NavLink href="/privadas" icon={GameController01Icon} small />
             <NavLink href="/players" icon={RankingIcon} small />
             <NavLink href="/wz" icon={GunIcon} small />
             <NavLink href="/comunidad" icon={UserGroupIcon} small />

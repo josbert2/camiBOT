@@ -49,6 +49,9 @@ model User {
   leaguePlayers      LeaguePlayer[]
   gulagAccusations   GulagEntry[]   @relation("GulagAccused")
   gulagCreated       GulagEntry[]   @relation("GulagCreator")
+  privadasCreated    PrivateMatch[] @relation("PrivateMatchCreator")
+  privadaSignups     PrivateMatchSignup[]
+  privadaSquads      PrivateSquad[]       @relation("PrivateSquadCaptain")
 
   @@index([discordId])
 }
@@ -690,4 +693,82 @@ model GulagEntry {
   createdBy User  @relation("GulagCreator", fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
+}
+
+enum PrivateMatchStatus {
+  OPEN
+  CLOSED
+  FINISHED
+}
+
+/**
+ * Privada (scrim) que arma un admin: pasa el link de la sala/invite y la gente
+ * logueada se apunta con su cuenta de Discord. `maxPlayers` es el cupo (35-50
+ * en Warzone); al llegar al cupo la privada queda "llena".
+ */
+model PrivateMatch {
+  id          String             @id @default(cuid())
+  name        String
+  link        String?
+  prize       String?
+  // Si la privada tiene inscripción (roster + "me apunto"). Si es false es solo
+  // un anuncio con link, sin lista de apuntados.
+  hasSignup   Boolean            @default(true)
+  // Tamaño de equipo: 1 = solos (sin squads), 2/3/4 = dúos/tríos/cuartetos.
+  squadSize   Int                @default(1)
+  maxPlayers  Int?
+  scheduledAt DateTime?
+  status      PrivateMatchStatus @default(OPEN)
+  // Mensaje del panel en Discord (para refrescarlo desde cualquier interacción).
+  channelId   String?
+  messageId   String?
+  createdById String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  createdBy User                 @relation("PrivateMatchCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  signups   PrivateMatchSignup[]
+  squads    PrivateSquad[]
+
+  @@index([status, scheduledAt])
+}
+
+/**
+ * Equipo dentro de una privada. Lo crea un jugador que queda como capitán
+ * (uno solo por squad) y le pone nombre; el resto elige a qué squad unirse.
+ */
+model PrivateSquad {
+  id        String   @id @default(cuid())
+  matchId   String
+  name      String
+  captainId String
+  createdAt DateTime @default(now())
+
+  match   PrivateMatch         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  captain User                 @relation("PrivateSquadCaptain", fields: [captainId], references: [id], onDelete: Cascade)
+  members PrivateMatchSignup[]
+
+  // Un capitán no puede tener dos squads en la misma privada.
+  @@unique([matchId, captainId])
+  @@index([matchId])
+}
+
+/** Un jugador apuntado a una privada. Uno por usuario y privada. */
+model PrivateMatchSignup {
+  id        String   @id @default(cuid())
+  matchId   String
+  userId    String
+  // Squad al que pertenece (null = todavía sin equipo, o privada de solos).
+  squadId   String?
+  // Identificador del juego que llena el jugador (ej: Activision ID). Opcional.
+  gameId    String?
+  createdAt DateTime @default(now())
+
+  match PrivateMatch  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  squad PrivateSquad? @relation(fields: [squadId], references: [id], onDelete: SetNull)
+
+  @@unique([matchId, userId])
+  @@index([matchId])
+  @@index([squadId])
 }

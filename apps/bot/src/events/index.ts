@@ -5,6 +5,11 @@ import { upsertGuild } from '../lib/db-helpers.js';
 import { handleTournamentButton } from '../interactions/buttons/tournament-register.js';
 import { handleMatchAdminButton } from '../interactions/buttons/match-admin.js';
 import {
+  handlePrivadaButton,
+  handlePrivadaModal,
+  handlePrivadaSelect,
+} from '../interactions/buttons/private-match.js';
+import {
   handleTeamButton,
   handleTeamModalSubmit,
   handleTeamSelect,
@@ -40,6 +45,10 @@ export function registerEvents(client: Client) {
           await handleMatchAdminButton(interaction);
           return;
         }
+        if (interaction.customId.startsWith('privada:')) {
+          await handlePrivadaButton(interaction);
+          return;
+        }
         logger.warn({ customId: interaction.customId }, 'Botón sin handler');
         return;
       }
@@ -49,11 +58,19 @@ export function registerEvents(client: Client) {
           await handleTeamModalSubmit(interaction);
           return;
         }
+        if (interaction.customId.startsWith('privada:')) {
+          await handlePrivadaModal(interaction);
+          return;
+        }
       }
 
       if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith('tournament:team-join-select:')) {
           await handleTeamSelect(interaction);
+          return;
+        }
+        if (interaction.customId.startsWith('privada:team-join-select:')) {
+          await handlePrivadaSelect(interaction);
           return;
         }
       }
