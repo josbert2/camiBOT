@@ -53,6 +53,9 @@ const STATUS: Record<PrivadaStatus, { label: string; cls: string }> = {
 
 const SQUAD_LABEL: Record<number, string> = { 1: 'Solos', 2: 'Dúos', 3: 'Tríos', 4: 'Cuartetos' };
 
+// Colores de equipo (categórico, estilo lobby de Warzone). Se ciclan por índice.
+const TEAM_HUES = ['#b91c1c', '#1d4ed8', '#7c3aed', '#0e7490', '#c2410c', '#15803d', '#a21caf', '#a16207'];
+
 export function PrivadasBoard({
   rows,
   isAdmin,
@@ -324,58 +327,81 @@ function TeamsSignup({
 
   return (
     <div className="mt-3 space-y-3">
-      {row.squads.length > 0 ? (
-        <ul className="space-y-2">
-          {row.squads.map((sq) => {
-            const mine = sq.id === row.mySquadId;
-            const canJoin = canAct && isLoggedIn && !mine && !sq.isFull && !iAmCaptainSomewhere;
-            return (
-              <li
-                key={sq.id}
-                className={`border-2 p-2.5 ${mine ? 'border-primary/60 bg-primary/5' : 'border-border'}`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-bold">
-                    {sq.name}{' '}
-                    <span className="text-[10px] font-normal uppercase tracking-widest text-muted-foreground">
-                      {sq.size}/{row.squadSize}
-                    </span>
-                  </span>
-                  {canJoin && (
-                    <button
-                      onClick={() => onJoin(sq.id)}
-                      disabled={busy}
-                      className="shrink-0 btn-tactical px-2 py-1 text-[10px] disabled:opacity-50"
-                    >
-                      Unirme
-                    </button>
-                  )}
-                  {sq.isFull && !mine && (
-                    <span className="shrink-0 text-[9px] uppercase tracking-widest text-muted-foreground">Completo</span>
-                  )}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {sq.members.map((mm) => (
-                    <Chip key={mm.id} s={mm} tag={mm.isCaptain ? 'C' : undefined} />
-                  ))}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="text-xs text-muted-foreground">Todavía no hay equipos. Creá el primero.</p>
-      )}
-
       {row.teamless.length > 0 && (
-        <div>
-          <div className="mb-1 text-[9px] uppercase tracking-widest text-muted-foreground">Sin equipo</div>
+        <div className="border-2 border-border bg-muted/30 p-2">
+          <div className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+            Sin asignar ({row.teamless.length})
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {row.teamless.map((s) => (
               <Chip key={s.id} s={s} />
             ))}
           </div>
         </div>
+      )}
+
+      {row.squads.length > 0 ? (
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {row.squads.map((sq, i) => {
+            const hue = TEAM_HUES[i % TEAM_HUES.length];
+            const mine = sq.id === row.mySquadId;
+            const canJoin = canAct && isLoggedIn && !mine && !sq.isFull && !iAmCaptainSomewhere;
+            const members = [...sq.members].sort((a, b) => Number(b.isCaptain) - Number(a.isCaptain));
+            const slots = Array.from({ length: row.squadSize });
+            return (
+              <li
+                key={sq.id}
+                className={`flex flex-col overflow-hidden border-2 bg-card ${mine ? 'border-primary' : 'border-border'}`}
+              >
+                <div className="flex items-center gap-1.5 px-2 py-1" style={{ backgroundColor: hue }}>
+                  <span className="text-[8px] font-bold uppercase tracking-widest text-white/70">Team</span>
+                  <span className="truncate text-xs font-bold text-white">{sq.name}</span>
+                  <span className="ml-auto shrink-0 text-[9px] font-bold text-white/80">
+                    {sq.size}/{row.squadSize}
+                  </span>
+                </div>
+                <div className="flex-1 space-y-0.5 p-2">
+                  {slots.map((_, idx) => {
+                    const m = members[idx];
+                    if (!m) {
+                      return (
+                        <div key={idx} className="truncate text-[11px] text-muted-foreground/25">
+                          — libre —
+                        </div>
+                      );
+                    }
+                    return (
+                      <div
+                        key={idx}
+                        className={`flex items-center gap-1 truncate text-[11px] ${m.isMe ? 'font-bold text-foreground' : 'text-muted-foreground'}`}
+                        title={m.gameId ? `${m.name} · ${m.gameId}` : m.name}
+                      >
+                        {m.isCaptain && <span className="shrink-0 text-[9px] font-bold uppercase text-accent">Cap.</span>}
+                        <span className="truncate">{m.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {canJoin && (
+                  <button
+                    onClick={() => onJoin(sq.id)}
+                    disabled={busy}
+                    className="border-t-2 border-border bg-muted/40 py-1 text-[9px] font-bold uppercase tracking-widest text-primary transition hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
+                  >
+                    {busy ? '…' : 'Unirme'}
+                  </button>
+                )}
+                {sq.isFull && !mine && (
+                  <div className="border-t-2 border-border py-1 text-center text-[9px] uppercase tracking-widest text-muted-foreground">
+                    Completo
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">Todavía no hay equipos. Creá el primero.</p>
       )}
 
       {!isLoggedIn ? (
