@@ -139,6 +139,21 @@ function PrivadaCard({
     }
   }
 
+  async function setInscripcion(hasSignup: boolean) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/private-matches/${row.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ hasSignup }),
+      });
+      if (res.ok) router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function remove() {
     if (busy || !confirm(`¿Borrar la privada "${row.name}"?`)) return;
     setBusy(true);
@@ -237,6 +252,15 @@ function PrivadaCard({
 
       {isAdmin && (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+          {row.hasSignup ? (
+            <AdminBtn onClick={() => setInscripcion(false)} busy={busy}>
+              Quitar inscripción
+            </AdminBtn>
+          ) : (
+            <AdminBtn onClick={() => setInscripcion(true)} busy={busy} tone="success">
+              Activar inscripción
+            </AdminBtn>
+          )}
           {row.status !== 'OPEN' && (
             <AdminBtn onClick={() => setStatus('OPEN')} busy={busy} tone="success">
               Reabrir

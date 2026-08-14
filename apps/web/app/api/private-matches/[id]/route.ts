@@ -15,12 +15,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const { id } = await params;
   const body = await req.json().catch(() => null);
-  const status = body?.status as Status | undefined;
-  if (!status || !STATUSES.includes(status)) {
-    return NextResponse.json({ error: 'Estado inválido.' }, { status: 400 });
+
+  const data: { status?: Status; hasSignup?: boolean } = {};
+  if (body?.status !== undefined) {
+    const status = body.status as Status;
+    if (!STATUSES.includes(status)) {
+      return NextResponse.json({ error: 'Estado inválido.' }, { status: 400 });
+    }
+    data.status = status;
+  }
+  if (typeof body?.hasSignup === 'boolean') {
+    data.hasSignup = body.hasSignup;
+  }
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'Nada que cambiar.' }, { status: 400 });
   }
 
-  await prisma.privateMatch.update({ where: { id }, data: { status } });
+  await prisma.privateMatch.update({ where: { id }, data });
   return NextResponse.json({ ok: true });
 }
 
