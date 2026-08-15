@@ -200,7 +200,15 @@ export function Lobby({
                         const m = members[idx];
                         if (!m) return <div key={idx} className="text-[11px] text-muted-foreground/25">— libre —</div>;
                         return (
-                          <div key={idx} className={`flex items-center gap-1 truncate text-[12px] ${m.isMe ? 'font-bold text-foreground' : 'text-muted-foreground'}`} title={m.gameId ? `${m.name} · ${m.gameId}` : m.name}>
+                          <div key={idx} className={`flex items-center gap-1.5 truncate text-[12px] ${m.isMe ? 'font-bold text-foreground' : 'text-muted-foreground'}`} title={m.gameId ? `${m.name} · ${m.gameId}` : m.name}>
+                            {m.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={m.avatarUrl} alt="" className="h-5 w-5 shrink-0 border border-border object-cover" />
+                            ) : (
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center border border-border bg-muted text-[8px]">
+                                {m.name.slice(0, 1).toUpperCase()}
+                              </span>
+                            )}
                             {m.isCaptain && <span className="shrink-0 text-[9px] font-bold uppercase text-accent">Cap.</span>}
                             <span className="truncate">{m.name}</span>
                           </div>
