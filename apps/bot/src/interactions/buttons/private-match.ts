@@ -213,12 +213,6 @@ async function submitJoin(interaction: ModalSubmitInteraction, matchId: string, 
   if (match.status !== 'OPEN') return editErr(interaction, 'La inscripción está cerrada.');
 
   const user = await upsertUser(interaction.user);
-  const myCaptain = await prisma.privateSquad.findUnique({
-    where: { matchId_captainId: { matchId, captainId: user.id } },
-  });
-  if (myCaptain && myCaptain.id !== squadId) {
-    return editErr(interaction, 'Sos capitán de otro equipo. Salí primero.');
-  }
 
   const squad = await prisma.privateSquad.findFirst({
     where: { id: squadId, matchId },
@@ -237,20 +231,47 @@ async function submitJoin(interaction: ModalSubmitInteraction, matchId: string, 
     return editErr(interaction, 'Cupo lleno.');
   }
 
+  // Si venía de otro equipo, libero la capitanía anterior.
+  if (existing?.squadId && existing.squadId !== squadId) {
+    await reassignPrivadaCaptain(existing.squadId, user.id);
+  }
+
   await prisma.privateMatchSignup.upsert({
     where: { matchId_userId: { matchId, userId: user.id } },
     update: { squadId, gameId },
     create: { matchId, userId: user.id, squadId, gameId },
   });
+
+  // Primero en entrar al slot vacío → queda de capitán.
+  if (squad.captainId == null) {
+    await prisma.privateSquad.update({ where: { id: squadId }, data: { captainId: user.id } });
+  }
+
   await refreshPrivadaPanel(interaction.client, matchId);
   await interaction.editReply({ content: `✓ Te uniste al equipo **${squad.name}**.` });
+}
+
+/** Si el capitán se va, promueve al siguiente miembro (o deja el slot vacío). */
+async function reassignPrivadaCaptain(squadId: string, leavingUserId: string) {
+  const squad = await prisma.privateSquad.findUnique({ where: { id: squadId }, select: { captainId: true } });
+  if (!squad || squad.captainId !== leavingUserId) return;
+  const next = await prisma.privateMatchSignup.findFirst({
+    where: { squadId, userId: { not: leavingUserId } },
+    orderBy: { createdAt: 'asc' },
+    select: { userId: true },
+  });
+  await prisma.privateSquad.update({ where: { id: squadId }, data: { captainId: next?.userId ?? null } });
 }
 
 async function doLeave(interaction: ButtonInteraction, matchId: string) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const user = await upsertUser(interaction.user);
-  await prisma.privateSquad.deleteMany({ where: { matchId, captainId: user.id } });
+  const mine = await prisma.privateMatchSignup.findUnique({
+    where: { matchId_userId: { matchId, userId: user.id } },
+    select: { squadId: true },
+  });
   const { count } = await prisma.privateMatchSignup.deleteMany({ where: { matchId, userId: user.id } });
+  if (mine?.squadId) await reassignPrivadaCaptain(mine.squadId, user.id);
   await refreshPrivadaPanel(interaction.client, matchId);
   await interaction.editReply({ content: count ? 'Saliste de la privada.' : 'No estabas apuntado.' });
 }

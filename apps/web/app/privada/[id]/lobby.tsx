@@ -29,12 +29,10 @@ export function Lobby({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gameId, setGameId] = useState(row.myGameId ?? '');
-  const [newName, setNewName] = useState('');
 
   const st = STATUS[row.status];
   const isTeams = row.squadSize > 1;
   const full = row.maxPlayers != null && row.totalSignups >= row.maxPlayers;
-  const iAmCaptainSomewhere = row.squads.some((s) => s.iAmCaptain);
   const canAct = row.status === 'OPEN' && row.hasSignup;
   const inASquad = row.mySquadId != null;
 
@@ -157,24 +155,12 @@ export function Lobby({
                   disabled={busy}
                   className="mt-3 w-full border-2 border-danger/50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-danger transition hover:bg-danger hover:text-danger-foreground disabled:opacity-50"
                 >
-                  {busy ? '…' : iAmCaptainSomewhere ? 'Disolver / salir' : 'Salir del equipo'}
+                  {busy ? '…' : 'Salir del equipo'}
                 </button>
               ) : (
-                <div className="mt-3 space-y-1.5">
-                  <input
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Nombre de tu equipo"
-                    className="w-full border-2 border-border bg-input px-2 py-1.5 text-xs outline-none focus:border-border-strong"
-                  />
-                  <button
-                    onClick={() => { if (newName.trim()) call('POST', { squadName: newName.trim(), gameId }); setNewName(''); }}
-                    disabled={busy || !newName.trim()}
-                    className="w-full btn-tactical text-[10px] disabled:opacity-50"
-                  >
-                    {busy ? '…' : 'Crear equipo'}
-                  </button>
-                </div>
+                <p className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Tocá un equipo del grid para unirte →
+                </p>
               )
             )}
           </aside>
@@ -185,7 +171,7 @@ export function Lobby({
               {row.squads.map((sq, i) => {
                 const hue = TEAM_HUES[i % TEAM_HUES.length];
                 const mine = sq.id === row.mySquadId;
-                const canJoin = canAct && isLoggedIn && !mine && !sq.isFull && !iAmCaptainSomewhere;
+                const canJoin = canAct && isLoggedIn && !mine && !sq.isFull;
                 const members = [...sq.members].sort((a, b) => Number(b.isCaptain) - Number(a.isCaptain));
                 const slots = Array.from({ length: row.squadSize });
                 return (
@@ -211,6 +197,7 @@ export function Lobby({
                             )}
                             {m.isCaptain && <span className="shrink-0 text-[9px] font-bold uppercase text-accent">Cap.</span>}
                             <span className="truncate">{m.name}</span>
+                            {m.gameId && <span className="ml-auto shrink-0 max-w-[6rem] truncate font-mono text-[9px] text-primary/80">{m.gameId}</span>}
                           </div>
                         );
                       })}

@@ -107,11 +107,10 @@ export async function buildPrivadaPanel(matchId: string) {
       rows.push(
         new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(`privada:team-create:${match.id}`)
-            .setLabel('Crear equipo')
+            .setCustomId(`privada:team-join:${match.id}`)
+            .setLabel('Unirme a un equipo')
             .setStyle(ButtonStyle.Success)
             .setDisabled(full),
-          new ButtonBuilder().setCustomId(`privada:team-join:${match.id}`).setLabel('Unirme').setStyle(ButtonStyle.Primary),
           new ButtonBuilder().setCustomId(`privada:leave:${match.id}`).setLabel('Salir').setStyle(ButtonStyle.Danger),
         ),
       );

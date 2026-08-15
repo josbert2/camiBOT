@@ -741,15 +741,14 @@ model PrivateSquad {
   id        String   @id @default(cuid())
   matchId   String
   name      String
-  captainId String
+  // Capitán: el primero que se une al slot. Null = slot vacío pre-creado.
+  captainId String?
   createdAt DateTime @default(now())
 
   match   PrivateMatch         @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  captain User                 @relation("PrivateSquadCaptain", fields: [captainId], references: [id], onDelete: Cascade)
+  captain User?                @relation("PrivateSquadCaptain", fields: [captainId], references: [id], onDelete: SetNull)
   members PrivateMatchSignup[]
 
-  // Un capitán no puede tener dos squads en la misma privada.
-  @@unique([matchId, captainId])
   @@index([matchId])
 }
 

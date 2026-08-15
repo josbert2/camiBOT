@@ -125,8 +125,29 @@ export async function fetchPrivadaRows(meId: string | null): Promise<PrivadaRow[
   return matches.map((m) => mapRow(m, meId));
 }
 
+/**
+ * Pre-crea los slots de equipo vacíos si es una privada por equipos y todavía
+ * no tiene ninguno (así la gente se une "donde sea" sin crear equipos a mano).
+ */
+export async function ensureSquads(match: { id: string; squadSize: number; maxPlayers: number | null }): Promise<void> {
+  if (match.squadSize <= 1) return;
+  const existing = await prisma.privateSquad.count({ where: { matchId: match.id } });
+  if (existing > 0) return;
+  const base = match.maxPlayers ?? match.squadSize * 12;
+  const n = Math.min(30, Math.max(2, Math.ceil(base / match.squadSize)));
+  await prisma.privateSquad.createMany({
+    data: Array.from({ length: n }, (_, i) => ({ matchId: match.id, name: `Equipo ${i + 1}` })),
+  });
+}
+
 /** Una privada por id (para la lobby /privada/[id]). */
 export async function fetchPrivadaRow(id: string, meId: string | null): Promise<PrivadaRow | null> {
-  const m = await prisma.privateMatch.findUnique({ where: { id }, include: privadaInclude });
-  return m ? mapRow(m, meId) : null;
+  let m = await prisma.privateMatch.findUnique({ where: { id }, include: privadaInclude });
+  if (!m) return null;
+  if (m.squadSize > 1 && m.squads.length === 0) {
+    await ensureSquads(m);
+    m = await prisma.privateMatch.findUnique({ where: { id }, include: privadaInclude });
+    if (!m) return null;
+  }
+  return mapRow(m, meId);
 }

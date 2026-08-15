@@ -88,6 +88,15 @@ async function handleCrear(interaction: ChatInputCommandInteraction) {
     select: { id: true },
   });
 
+  // Pre-creamos los slots de equipo vacíos (la gente se une donde quiera).
+  if (squadSize > 1) {
+    const base = maxPlayers ?? squadSize * 12;
+    const n = Math.min(30, Math.max(2, Math.ceil(base / squadSize)));
+    await prisma.privateSquad.createMany({
+      data: Array.from({ length: n }, (_, i) => ({ matchId: match.id, name: `Equipo ${i + 1}` })),
+    });
+  }
+
   const panel = await buildPrivadaPanel(match.id);
   if (!panel) {
     await interaction.editReply({ content: 'No pude armar el panel.' });
