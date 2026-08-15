@@ -197,7 +197,7 @@ export function Lobby({
                             )}
                             {m.isCaptain && <span className="shrink-0 text-[9px] font-bold uppercase text-accent">Cap.</span>}
                             <span className="truncate">{m.name}</span>
-                            {m.gameId && <span className="ml-auto shrink-0 max-w-[6rem] truncate font-mono text-[9px] text-primary/80">{m.gameId}</span>}
+                            {m.gameId && <CopyTag value={m.gameId} className="ml-auto" />}
                           </div>
                         );
                       })}
@@ -281,6 +281,27 @@ function SoloRoster({
   );
 }
 
+/** Muestra el tag / ID de juego y lo copia al portapapeles al tocarlo. */
+function CopyTag({ value, className = '' }: { value: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      title="Copiar ID"
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard?.writeText(value).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1200);
+        });
+      }}
+      className={`shrink-0 max-w-[8rem] truncate rounded-none border border-border/60 bg-muted/40 px-1 font-mono text-[9px] text-primary/90 transition hover:border-primary hover:text-primary ${className}`}
+    >
+      {copied ? '✓ copiado' : value}
+    </button>
+  );
+}
+
 function RosterLine({ s }: { s: PrivadaSignup }) {
   return (
     <div
@@ -294,7 +315,7 @@ function RosterLine({ s }: { s: PrivadaSignup }) {
         <span className="flex h-5 w-5 shrink-0 items-center justify-center bg-muted text-[9px]">{s.name.slice(0, 1).toUpperCase()}</span>
       )}
       <span className="truncate">{s.name}</span>
-      {s.gameId && <span className="ml-auto max-w-[7rem] truncate font-mono text-[9px] text-primary/80">{s.gameId}</span>}
+      {s.gameId && <CopyTag value={s.gameId} className="ml-auto" />}
     </div>
   );
 }
