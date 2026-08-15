@@ -89,14 +89,19 @@ export function Lobby({
         </div>
 
         {row.link && (
-          <a
-            href={row.link}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 btn-tactical text-xs"
-          >
-            <HugeiconsIcon icon={Link01Icon} className="h-4 w-4" /> Entrar a la sala
-          </a>
+          <div className="mt-3">
+            <a
+              href={row.link}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 btn-ghost text-xs"
+            >
+              <HugeiconsIcon icon={Link01Icon} className="h-4 w-4" /> Abrir link de la sala
+            </a>
+            <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+              Link externo del juego · abrilo cuando arranque
+            </p>
+          </div>
         )}
 
         {!row.hasSignup && (
