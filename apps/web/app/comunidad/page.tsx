@@ -131,7 +131,7 @@ export default async function ComunidadPage({
                 <span>// REGLAS DE COMBATE</span>
               </div>
               <ul className="space-y-2 text-xs leading-relaxed text-muted-foreground">
-                <li>Clips en MP4, WEBM o MOV — hasta 100 MB.</li>
+                <li>Clips en MP4, WEBM o MOV — hasta 500 MB.</li>
                 <li>Sumá likes en tus clips para escalar en el ranking.</li>
                 <li>Nada de toxicidad: los mensajes pasan por filtro.</li>
               </ul>

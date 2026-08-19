@@ -25,7 +25,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  *                           sin barra final. Es lo que se sirve al browser.
  */
 
-export const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // 100 MB
+export const MAX_VIDEO_BYTES = 500 * 1024 * 1024; // 500 MB
 export const MAX_POSTER_BYTES = 2 * 1024 * 1024; // 2 MB
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 

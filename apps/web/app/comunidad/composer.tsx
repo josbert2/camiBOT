@@ -21,7 +21,7 @@ import { VideoTrimmer } from './video-trimmer';
 export type WeaponOption = { id: string; name: string };
 
 const ACCEPT = 'video/mp4,video/webm,video/quicktime';
-const MAX_MB = 100;
+const MAX_MB = 500;
 
 type Picked = {
   file: File;
