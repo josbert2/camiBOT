@@ -48,6 +48,8 @@ export function VideoPlayer({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [buffering, setBuffering] = useState(false);
+  const [bufferedPct, setBufferedPct] = useState(0);
 
   const download = useCallback(async () => {
     if (downloading) return;
@@ -84,8 +86,10 @@ export function VideoPlayer({
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) v.play();
-    else v.pause();
+    if (v.paused) {
+      if (v.readyState < 3) setBuffering(true);
+      v.play();
+    } else v.pause();
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -176,14 +180,31 @@ export function VideoPlayer({
         }}
         onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onWaiting={() => setBuffering(true)}
+        onStalled={() => setBuffering(true)}
+        onPlaying={() => setBuffering(false)}
+        onCanPlay={() => setBuffering(false)}
+        onProgress={(e) => {
+          const v = e.currentTarget;
+          if (v.buffered.length && v.duration) {
+            setBufferedPct((v.buffered.end(v.buffered.length - 1) / v.duration) * 100);
+          }
+        }}
         onVolumeChange={(e) => {
           setMuted(e.currentTarget.muted);
           setVolume(e.currentTarget.volume);
         }}
       />
 
-      {/* Botón central de play (cuando está pausado) */}
-      {!playing && (
+      {/* Spinner de carga / buffering */}
+      {buffering && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span className="h-12 w-12 animate-spin rounded-full border-2 border-white/25 border-t-primary" />
+        </div>
+      )}
+
+      {/* Botón central de play (cuando está pausado y no está cargando) */}
+      {!playing && !buffering && (
         <button
           type="button"
           onClick={togglePlay}
@@ -208,6 +229,7 @@ export function VideoPlayer({
           onClick={(e) => seekFromClientX(e.clientX)}
           className="group/track relative mb-2 h-1 cursor-pointer bg-white/20"
         >
+          <div className="absolute left-0 top-0 h-full bg-white/30" style={{ width: `${bufferedPct}%` }} />
           <div className="absolute left-0 top-0 h-full bg-primary" style={{ width: `${pct}%` }} />
           <div
             className="absolute top-1/2 h-3 w-1.5 -translate-y-1/2 -translate-x-1/2 bg-accent opacity-0 transition-opacity group-hover/track:opacity-100"
