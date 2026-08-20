@@ -176,14 +176,20 @@ export function VideoPlayer({
         }}
         onPause={() => {
           setPlaying(false);
+          setBuffering(false);
           setControlsVisible(true);
         }}
-        onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
+        onTimeUpdate={(e) => {
+          setCurrent(e.currentTarget.currentTime);
+          // Si el tiempo avanza, está reproduciendo → no está buffereando.
+          setBuffering(false);
+        }}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         onWaiting={() => setBuffering(true)}
-        onStalled={() => setBuffering(true)}
         onPlaying={() => setBuffering(false)}
         onCanPlay={() => setBuffering(false)}
+        onSeeking={() => setBuffering(true)}
+        onSeeked={() => setBuffering(false)}
         onProgress={(e) => {
           const v = e.currentTarget;
           if (v.buffered.length && v.duration) {
@@ -196,15 +202,15 @@ export function VideoPlayer({
         }}
       />
 
-      {/* Spinner de carga / buffering */}
-      {buffering && (
+      {/* Spinner de carga / buffering (solo si está reproduciendo y frenado) */}
+      {buffering && playing && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <span className="h-12 w-12 animate-spin rounded-full border-2 border-white/25 border-t-primary" />
         </div>
       )}
 
-      {/* Botón central de play (cuando está pausado y no está cargando) */}
-      {!playing && !buffering && (
+      {/* Botón central de play (cuando está pausado) */}
+      {!playing && (
         <button
           type="button"
           onClick={togglePlay}
