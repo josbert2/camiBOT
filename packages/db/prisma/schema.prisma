@@ -53,7 +53,20 @@ model User {
   privadaSignups     PrivateMatchSignup[]
   privadaSquads      PrivateSquad[]       @relation("PrivateSquadCaptain")
 
+  // Handles de streaming (los carga el user o un admin).
+  twitchLogin String?
+  kickSlug    String?
+  tiktokUser  String?
+  // Estado de "en vivo", lo actualiza el poller del bot.
+  livePlatform  String? // 'twitch' | 'kick' | 'tiktok'
+  liveTitle     String?
+  liveUrl       String?
+  liveViewers   Int?
+  liveStartedAt DateTime?
+  liveCheckedAt DateTime?
+
   @@index([discordId])
+  @@index([livePlatform])
 }
 
 model Guild {

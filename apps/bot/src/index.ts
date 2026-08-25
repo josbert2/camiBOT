@@ -4,6 +4,7 @@ import { logger } from './lib/logger.js';
 import { registerEvents } from './events/index.js';
 import { startHeartbeat, stopHeartbeat } from './lib/heartbeat.js';
 import { setDiscordClient } from './lib/discord-client.js';
+import { startStreamPoller, stopStreamPoller } from './lib/stream-poller.js';
 
 const client = new Client({
   // Solo Guilds — slash commands y botones no necesitan más.
@@ -20,6 +21,7 @@ process.on('uncaughtException', (err) => logger.error({ err }, 'uncaughtExceptio
 
 async function shutdown(signal: string) {
   logger.info(`Received ${signal}, shutting down...`);
+  stopStreamPoller();
   await stopHeartbeat();
   await client.destroy();
   process.exit(0);
@@ -33,3 +35,4 @@ client.login(env.DISCORD_TOKEN).catch((err) => {
 });
 
 startHeartbeat();
+startStreamPoller(client);
