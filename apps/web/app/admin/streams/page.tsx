@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@camibot/db';
 import { auth } from '@/auth';
 import { isAdmin } from '@/lib/admin';
+import { discordAvatarUrl } from '@/lib/community';
 import { StreamsAdmin, type StreamUser } from './streams-admin';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,8 @@ export default async function AdminStreamsPage() {
       username: true,
       globalName: true,
       nickname: true,
+      discordId: true,
+      avatar: true,
       twitchLogin: true,
       kickSlug: true,
       tiktokUser: true,
@@ -31,6 +34,7 @@ export default async function AdminStreamsPage() {
   const rows: StreamUser[] = users.map((u) => ({
     id: u.id,
     name: u.nickname ?? u.globalName ?? u.username,
+    avatarUrl: discordAvatarUrl(u.discordId, u.avatar),
     twitchLogin: u.twitchLogin,
     kickSlug: u.kickSlug,
     tiktokUser: u.tiktokUser,
