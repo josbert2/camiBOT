@@ -54,6 +54,7 @@ export default async function EnVivoPage() {
             const name = u.nickname ?? u.globalName ?? u.username;
             const avatar = discordAvatarUrl(u.discordId, u.avatar);
             const cover = u.liveThumb ?? avatar;
+            const showAvatar = avatar && cover !== avatar; // no repetir si el avatar ya es la portada
             const platform = u.livePlatform ?? '';
             const meta = PLATFORM_META[platform] ?? { label: 'Live', color: '#b91c1c' };
             return (
@@ -93,7 +94,17 @@ export default async function EnVivoPage() {
 
                   {/* Contenido */}
                   <div className="absolute inset-x-0 bottom-0 p-4">
-                    <h2 className="stencil truncate text-2xl leading-none text-white">{name}</h2>
+                    <div className="flex items-center gap-2">
+                      {showAvatar && avatar ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={avatar} alt="" className="h-9 w-9 shrink-0 rounded-full border-2 border-white/80 object-cover" />
+                      ) : (
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-white/80 bg-black/40 text-[10px] font-bold text-white">
+                          {name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                      <h2 className="stencil truncate text-2xl leading-none text-white">{name}</h2>
+                    </div>
                     {u.liveTitle && <p className="mt-1 line-clamp-2 text-xs text-white/70">{u.liveTitle}</p>}
                     <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/70">
                       <span>{meta.label}</span>
