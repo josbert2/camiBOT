@@ -7,6 +7,9 @@ import { PlatformLogo, PLATFORM_META } from './platform-logo';
 
 export const dynamic = 'force-dynamic';
 
+// Color del degradado de fondo cuando no hay miniatura ni avatar.
+const COVER_COLOR: Record<string, string> = { twitch: '#9146FF', kick: '#53FC18', tiktok: '#fe2c55' };
+
 export const metadata: Metadata = {
   title: 'En vivo — Tournify',
   description: 'Miembros de la comunidad transmitiendo ahora.',
@@ -53,8 +56,7 @@ export default async function EnVivoPage() {
           {live.map((u) => {
             const name = u.nickname ?? u.globalName ?? u.username;
             const avatar = discordAvatarUrl(u.discordId, u.avatar);
-            const cover = u.liveThumb ?? avatar;
-            const showAvatar = avatar && cover !== avatar; // no repetir si el avatar ya es la portada
+            const thumb = u.liveThumb;
             const platform = u.livePlatform ?? '';
             const meta = PLATFORM_META[platform] ?? { label: 'Live', color: '#b91c1c' };
             return (
@@ -65,16 +67,23 @@ export default async function EnVivoPage() {
                   rel="noreferrer"
                   className="group relative block aspect-[3/4] overflow-hidden rounded-3xl border-2 border-border"
                 >
-                  {/* Portada */}
-                  {cover ? (
+                  {/* Portada / banner */}
+                  {thumb ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={cover}
+                      src={thumb}
                       alt=""
                       className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-105"
                     />
+                  ) : avatar ? (
+                    // Sin miniatura → usamos el avatar difuminado como banner.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={avatar} alt="" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-70 blur-xl" />
                   ) : (
-                    <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${meta.color}, #0a0c0d)` }} />
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: `linear-gradient(160deg, ${COVER_COLOR[platform] ?? meta.color}, #0a0c0d)` }}
+                    />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/10" />
 
@@ -95,7 +104,7 @@ export default async function EnVivoPage() {
                   {/* Contenido */}
                   <div className="absolute inset-x-0 bottom-0 p-4">
                     <div className="flex items-center gap-2">
-                      {showAvatar && avatar ? (
+                      {avatar ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={avatar} alt="" className="h-9 w-9 shrink-0 rounded-full border-2 border-white/80 object-cover" />
                       ) : (
