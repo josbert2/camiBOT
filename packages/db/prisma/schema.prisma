@@ -61,6 +61,7 @@ model User {
   livePlatform  String? // 'twitch' | 'kick' | 'tiktok'
   liveTitle     String?
   liveUrl       String?
+  liveThumb     String?
   liveViewers   Int?
   liveStartedAt DateTime?
   liveCheckedAt DateTime?

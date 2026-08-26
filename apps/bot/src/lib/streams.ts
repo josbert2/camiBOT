@@ -14,6 +14,7 @@ export type LiveInfo = {
   platform: StreamPlatform;
   title: string | null;
   url: string;
+  thumb: string | null;
   viewers: number | null;
   startedAt: Date | null;
 };
@@ -59,13 +60,20 @@ export async function twitchLive(logins: string[]): Promise<Map<string, LiveInfo
       });
       if (!res.ok) continue;
       const j = (await res.json()) as {
-        data?: Array<{ user_login: string; title?: string; viewer_count?: number; started_at?: string }>;
+        data?: Array<{
+          user_login: string;
+          title?: string;
+          viewer_count?: number;
+          started_at?: string;
+          thumbnail_url?: string;
+        }>;
       };
       for (const s of j.data ?? []) {
         out.set(String(s.user_login).toLowerCase(), {
           platform: 'twitch',
           title: s.title ?? null,
           url: `https://twitch.tv/${s.user_login}`,
+          thumb: s.thumbnail_url ? s.thumbnail_url.replace('{width}', '640').replace('{height}', '360') : null,
           viewers: s.viewer_count ?? null,
           startedAt: s.started_at ? new Date(s.started_at) : null,
         });
@@ -86,7 +94,13 @@ export async function kickLive(slug: string): Promise<LiveInfo | null> {
     });
     if (!res.ok) return null;
     const j = (await res.json()) as {
-      livestream?: { is_live?: boolean; session_title?: string; viewer_count?: number; created_at?: string } | null;
+      livestream?: {
+        is_live?: boolean;
+        session_title?: string;
+        viewer_count?: number;
+        created_at?: string;
+        thumbnail?: { url?: string } | null;
+      } | null;
     };
     const ls = j.livestream;
     if (!ls || ls.is_live === false) return null;
@@ -94,6 +108,7 @@ export async function kickLive(slug: string): Promise<LiveInfo | null> {
       platform: 'kick',
       title: ls.session_title ?? null,
       url: `https://kick.com/${slug}`,
+      thumb: ls.thumbnail?.url ?? null,
       viewers: ls.viewer_count ?? null,
       startedAt: ls.created_at ? new Date(ls.created_at) : null,
     };
@@ -121,6 +136,7 @@ export async function tiktokLive(user: string): Promise<LiveInfo | null> {
       platform: 'tiktok',
       title: null,
       url: `https://www.tiktok.com/@${user}/live`,
+      thumb: null,
       viewers: null,
       startedAt: null,
     };
